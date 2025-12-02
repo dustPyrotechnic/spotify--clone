@@ -19,6 +19,9 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
   self.musicPlayerModel = [XCMusicPlayerModel sharedInstance];
+  self.mainView = [[XCMusicPlayerView alloc] init];
+  self.mainView.frame = self.view.bounds;
+  [self.view addSubview:_mainView];
 
 }
 
