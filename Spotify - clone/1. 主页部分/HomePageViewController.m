@@ -76,7 +76,7 @@
   [myImagePhotoBtn setPreferredSymbolConfiguration:symbolConfig forImageInState:UIControlStateNormal];
   UIBarButtonItem* myImagePhotoButtonItem = [[UIBarButtonItem alloc]initWithCustomView:myImagePhotoBtn];
 
-  NSArray* titleArr = @[@"All",@"Music",@"Podcast",@" 有声书 "];
+  NSArray* titleArr = @[@"All",@"Music",@"Podcast",@"Audiobooks"];
 
   NSMutableArray* btnArr = [[NSMutableArray alloc] init];
   [btnArr addObject:myImagePhotoButtonItem];
@@ -117,6 +117,9 @@
   self.mainView.mainTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
   // 隐藏滚动条
   self.mainView.mainTableView.showsVerticalScrollIndicator = NO;
+  // 高度自适应
+  self.mainView.mainTableView.estimatedRowHeight = 200;
+  self.mainView.mainTableView.rowHeight = UITableViewAutomaticDimension;
 
   [self.mainView.mainTableView registerClass:[HomePageViewCollectionViewTableViewCell class] forCellReuseIdentifier:@"HomePageViewCollectionViewTableViewCell"];
   
@@ -162,7 +165,11 @@
 
 - (UIView*) tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
   NSArray* heightArray = @[@50,@40,@30,@30,@40];
-  NSArray* titleArray = @[@"今日推荐",@"推荐电台",@"根据你最近收听习惯推荐",@"热门电台",@"今日最火歌单"];
+  NSArray* titleArray = @[@"Picks",
+                          @"Radio",
+                          @"For You",
+                          @"Popular",
+                          @"Hot Mixes"];
   // 给一个大标题，左侧对齐，字体大小根据不同的节大小不同，并且内容不同
   // 使用自动布局来约束
   UIView* headView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, (CGFloat)[heightArray[section] integerValue])];

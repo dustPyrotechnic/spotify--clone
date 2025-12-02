@@ -14,7 +14,7 @@
 - (instancetype) initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-      //TODO: 完成布局
+
       // 测试代码
 //      self.backgroundColor = [UIColor systemRedColor];
       self.backgroundColor = [UIColor clearColor];
@@ -33,7 +33,7 @@
       self.imageView.layer.shadowRadius = 4.0;
 
       self.titleLable = [[UILabel alloc] init];
-      self.titleLable.text = @"网络发生故障，请稍后重试";
+      self.titleLable.text = @"Network error, retry";
       self.titleLable.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
       // 美化label
       self.titleLable.numberOfLines = 2;
@@ -51,10 +51,10 @@
       }];
 
       [self.titleLable mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.imageView.mas_bottom).offset(8);
+        make.top.equalTo(self.imageView.mas_bottom).offset(5);
         make.left.equalTo(self.contentView);
         make.right.equalTo(self.contentView);
-        make.bottom.lessThanOrEqualTo(self.contentView).offset(-4);
+        make.bottom.equalTo(self.contentView).offset (10);
       }];
     }
     return self;
