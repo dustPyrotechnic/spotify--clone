@@ -10,13 +10,16 @@
 @implementation HomePageView
 - (instancetype) initWithFrame:(CGRect)frame {
   self = [super initWithFrame:frame];
-
-  // 完成自定义操作
-  self.mainTableView = [[UITableView alloc] init];
-  self.mainTableView.frame = frame;
-
-  [self addSubview:self.mainTableView];
-
+  if (self) {
+    // 完成自定义操作
+    self.backgroundColor = [UIColor systemBackgroundColor];
+    
+    self.mainTableView = [[UITableView alloc] initWithFrame:self.bounds style:UITableViewStylePlain];
+    self.mainTableView.backgroundColor = [UIColor clearColor];
+    self.mainTableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    
+    [self addSubview:self.mainTableView];
+  }
   return self;
 }
 /*

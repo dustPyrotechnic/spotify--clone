@@ -17,9 +17,10 @@
         // 改为横向滑动的collectionView
       UICollectionViewFlowLayout* layout = [[UICollectionViewFlowLayout alloc] init];
       layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
-      layout.itemSize = CGSizeMake(180, 180);
-      layout.minimumLineSpacing = 15;
-      layout.sectionInset = UIEdgeInsetsMake(0, 15, 0, 15);
+      // 专辑卡片略小一些，留出左右留白；高度稍微加大，给两行标题预留空间
+      layout.itemSize = CGSizeMake(170, 230);
+      layout.minimumLineSpacing = 12;
+      layout.sectionInset = UIEdgeInsetsMake(0, 16, 0, 16);
       self.collectionView = [[UICollectionView alloc] initWithFrame:self.bounds collectionViewLayout:layout];
       self.collectionView.backgroundColor = [UIColor systemBackgroundColor];
       // 设置不显示滚动条
