@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIButton* nextSong;
 // 是否在播放
 @property (nonatomic, assign) BOOL isPlaying;
+// 使用一个block
 ///初始化这个View和照片
 - (instancetype) initWithFrame:(CGRect)frame withImage:(UIImage*)image andTitle:(NSString*)title withSonger:(NSString*)songer withCondition:(BOOL) isPlaying;
 @end
