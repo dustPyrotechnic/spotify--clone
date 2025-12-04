@@ -36,7 +36,7 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
 // 更换一下页面防止卡顿，一会换回来
-  UIViewController* homePageController = [[UIViewController alloc] init];
+  HomePageViewController* homePageController = [[HomePageViewController alloc] init];
   UINavigationController* homePageNavigationController = [[UINavigationController alloc] initWithRootViewController:homePageController];
 
   UIViewController* musicWarehousePageController = [[UIViewController alloc] init];
@@ -77,6 +77,10 @@
 
 
   XCMusicPlayerAccessoryView* musicPayerAccessoryView = [[XCMusicPlayerAccessoryView alloc] initWithFrame:CGRectMake(20, 20, self.view.bounds.size.width - 40, 40) withImage:[UIImage imageNamed:@"1.jpeg"] andTitle:@"测试歌曲" withSonger:@"测试歌手" withCondition:NO];
+  // 为block赋值
+  musicPayerAccessoryView.presentPlayerViewControllerBlock = ^(XCMusicPlayerViewController * _Nonnull playerVC) {
+    [self presentViewController:playerVC animated:YES completion:nil];
+  };
   self.bottomAccessory = [[UITabAccessory alloc] initWithContentView:musicPayerAccessoryView];
 //  [[XCMusicPlayerModel sharedInstance] testPlayAppleMusicSong];
 
@@ -96,18 +100,6 @@
  */
 }
 
-- (void)viewDidAppear:(BOOL)animated {
-  [super viewDidAppear:animated];
-  
-  //测试播放音乐 - 在视图完全显示后再推出模态视图（仅第一次）
-  if (!self.hasPresentedPlayer) {
-    self.hasPresentedPlayer = YES;
-    XCMusicPlayerViewController* VC = [[XCMusicPlayerViewController alloc] init];
-    VC.modalPresentationStyle = UIModalPresentationFullScreen;
-    // 模态视图推出
-    [self presentViewController:VC animated:YES completion:nil];
-  }
-}
 
 - (void) tabBarController:(UITabBarController *)tabBarController didSelectViewController:(UIViewController *)viewController {
   NSLog(@"didSelectViewController: %@", viewController);

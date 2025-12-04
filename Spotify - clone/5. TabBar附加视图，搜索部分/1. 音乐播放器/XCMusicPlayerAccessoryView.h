@@ -6,6 +6,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "XCMusicPlayerViewController.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -22,9 +23,12 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIButton* nextSong;
 // 是否在播放
 @property (nonatomic, assign) BOOL isPlaying;
-// 使用一个block
+// 使用一个block，让tabbar来推出视图，参数为一个XCMusicPlayerViewController的实例
+@property (nonatomic, copy) void (^presentPlayerViewControllerBlock)(XCMusicPlayerViewController* playerVC);
+
 ///初始化这个View和照片
 - (instancetype) initWithFrame:(CGRect)frame withImage:(UIImage*)image andTitle:(NSString*)title withSonger:(NSString*)songer withCondition:(BOOL) isPlaying;
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -138,7 +138,7 @@
     // 使用Masonry进行自动布局
     [self setupConstraints];
     
-    self.scaleTransform = CGAffineTransformMakeScale(1.4, 1.4);
+    self.scaleTransform = CGAffineTransformMakeScale(1.3, 1.3);
 
 //    [self letAlbumImageBig];
   }
