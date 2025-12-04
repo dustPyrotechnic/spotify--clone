@@ -93,7 +93,7 @@ static XCNetworkManager *instance = nil;
     }];
 }
 
-// 2. 改造获取数据方法
+
 - (void)getDataOfAllAlbums:(NSMutableArray *)array {
     static NSInteger dataTimes = 0;
 

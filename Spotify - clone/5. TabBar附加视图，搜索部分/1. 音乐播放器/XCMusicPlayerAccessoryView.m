@@ -7,6 +7,8 @@
 
 #import "XCMusicPlayerAccessoryView.h"
 
+#import "XCMusicPlayerViewController.h"
+
 #import <Masonry/Masonry.h>
 
 @implementation XCMusicPlayerAccessoryView
@@ -123,6 +125,8 @@
 - (void) handleTap:(UITapGestureRecognizer*) gestureRecognizer {
   // TODO: 弹出音乐播放器视图
   NSLog(@"弹出音乐播放器视图");
+  XCMusicPlayerViewController* playerVC = [[XCMusicPlayerViewController alloc] init];
+  
 }
 
 - (void) handleSwipe {

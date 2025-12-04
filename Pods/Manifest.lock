@@ -14,6 +14,9 @@ PODS:
   - AFNetworking/Serialization (4.0.1)
   - AFNetworking/UIKit (4.0.1):
     - AFNetworking/NSURLSession
+  - ChameleonFramework (2.1.0):
+    - ChameleonFramework/Default (= 2.1.0)
+  - ChameleonFramework/Default (2.1.0)
   - LookinServer (1.2.8):
     - LookinServer/Core (= 1.2.8)
   - LookinServer/Core (1.2.8)
@@ -29,6 +32,7 @@ PODS:
 
 DEPENDENCIES:
   - AFNetworking
+  - ChameleonFramework
   - LookinServer
   - Masonry
   - SDWebImage
@@ -39,6 +43,7 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - AFNetworking
+    - ChameleonFramework
     - LookinServer
     - Masonry
     - SDWebImage
@@ -49,6 +54,7 @@ SPEC REPOS:
 
 SPEC CHECKSUMS:
   AFNetworking: 3bd23d814e976cd148d7d44c3ab78017b744cd58
+  ChameleonFramework: d21a3cc247abfe5e37609a283a8238b03575cf64
   LookinServer: 1b2b61c6402ae29fa22182d48f5cd067b4e99e80
   Masonry: 678fab65091a9290e40e2832a55e7ab731aad201
   SDWebImage: 16309af6d214ba3f77a7c6f6fdda888cb313a50a
@@ -57,6 +63,6 @@ SPEC CHECKSUMS:
   WCDBOptimizedSQLCipher: 871994f7f620302fdf87a2729c099a1efa2223da
   YYModel: 2a7fdd96aaa4b86a824e26d0c517de8928c04b30
 
-PODFILE CHECKSUM: 942c4008132bafe0e0b90d4263b2029b275c5df5
+PODFILE CHECKSUM: eec5ab8142f8c61a6e42233336265b6fc408c099
 
 COCOAPODS: 1.16.2

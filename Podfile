@@ -6,15 +6,13 @@ target 'Spotify - clone' do
   # Comment the next line if you don't want to use dynamic frameworks
   # use_frameworks!
 
-  # 原有的库
   pod 'LookinServer'
-  pod 'AFNetworking' # 第3项
-  pod 'Masonry'      # 第4项
-
-  # 新增的库
+  pod 'AFNetworking' 
+  pod 'Masonry'      
   pod 'SDWebImage'   # 第1项：用于网络图片加载
-  pod 'YYModel'      # 第2项：高性能模型转换
-  pod 'WCDB.objc'    # 第5项：腾讯的数据库组件 (Objective-C版本)
+  pod 'YYModel'      
+  pod 'WCDB.objc'    
   pod 'UICKeyChainStore'
+  pod 'ChameleonFramework'
 
 end
