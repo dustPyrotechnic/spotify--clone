@@ -76,7 +76,7 @@
   [myImagePhotoBtn setPreferredSymbolConfiguration:symbolConfig forImageInState:UIControlStateNormal];
   UIBarButtonItem* myImagePhotoButtonItem = [[UIBarButtonItem alloc]initWithCustomView:myImagePhotoBtn];
 
-  NSArray* titleArr = @[@" All ",@" Music ",@" Podcast ",@" 有声书 "];
+  NSArray* titleArr = @[@"All",@"Music",@"Podcast",@"Audiobooks"];
 
   NSMutableArray* btnArr = [[NSMutableArray alloc] init];
   [btnArr addObject:myImagePhotoButtonItem];
@@ -102,12 +102,13 @@
 
   // 有声书
   self.navigationItem.leftBarButtonItems = btnArr;
+//  self.navigationItem.title = @"主页";
+
 
   // 设置View
   self.mainView = [[HomePageView alloc] initWithFrame:self.view.bounds];
-
-  //测试代码
-  self.mainView.backgroundColor = [UIColor systemRedColor];
+  // 统一使用系统背景色，保持整体简洁
+  self.view.backgroundColor = [UIColor systemBackgroundColor];
 
   // tableView相关部分
   self.mainView.mainTableView.delegate = self;
@@ -116,6 +117,9 @@
   self.mainView.mainTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
   // 隐藏滚动条
   self.mainView.mainTableView.showsVerticalScrollIndicator = NO;
+  // 高度自适应
+  self.mainView.mainTableView.estimatedRowHeight = 200;
+  self.mainView.mainTableView.rowHeight = UITableViewAutomaticDimension;
 
   [self.mainView.mainTableView registerClass:[HomePageViewCollectionViewTableViewCell class] forCellReuseIdentifier:@"HomePageViewCollectionViewTableViewCell"];
   
@@ -140,7 +144,8 @@
 }
 
 - (CGFloat) tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-  return 200;
+  // 根据 collectionViewCell 中 itemSize(高度 230) 预留空间，避免封面圆角和标题被截断
+  return 250;
 }
 
 - (UITableViewCell*) tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -156,6 +161,37 @@
 
   cell.collectionView.tag = indexPath.section + 100; // 三个collectionView，tag分别为100，101，102
   return cell;
+}
+
+- (UIView*) tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
+  NSArray* heightArray = @[@50,@40,@30,@30,@40];
+  NSArray* titleArray = @[@"Picks",
+                          @"Radio",
+                          @"For You",
+                          @"Popular",
+                          @"Hot Mixes"];
+  // 给一个大标题，左侧对齐，字体大小根据不同的节大小不同，并且内容不同
+  // 使用自动布局来约束
+  UIView* headView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, (CGFloat)[heightArray[section] integerValue])];
+  // 创建标题
+  UILabel* titleLabel = [[UILabel alloc] init];
+  titleLabel.text = titleArray[section];
+  titleLabel.font = [UIFont systemFontOfSize:[heightArray[section] integerValue] weight:UIFontWeightSemibold];
+  titleLabel.textColor = [UIColor labelColor];
+  titleLabel.textAlignment = NSTextAlignmentLeft;
+  [headView addSubview:titleLabel];
+  [titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+    make.left.equalTo(headView).offset(16);
+    make.centerY.equalTo(headView);
+  }];
+  return headView;
+}
+- (CGFloat) tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+  NSArray* heightArray = @[@50,@40,@30,@30,@40];
+  return (CGFloat)[heightArray[section] integerValue];
+}
+- (CGFloat) tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
+  return 5;
 }
 #pragma mark -UICollectionView
 - (NSInteger) numberOfSectionsInCollectionView:(UICollectionView *)collectionView {

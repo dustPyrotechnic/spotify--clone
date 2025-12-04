@@ -14,30 +14,47 @@
 - (instancetype) initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-      //TODO: 完成布局
+
       // 测试代码
 //      self.backgroundColor = [UIColor systemRedColor];
+      self.backgroundColor = [UIColor clearColor];
+      self.contentView.backgroundColor = [UIColor clearColor];
       UIImageSymbolConfiguration* size = [UIImageSymbolConfiguration configurationWithFont:[UIFont boldSystemFontOfSize:5]];
       UIImageSymbolConfiguration* conf = [UIImageSymbolConfiguration configurationPreferringMulticolor];
       UIImageSymbolConfiguration* final = [size configurationByApplyingConfiguration:conf];
       self.imageView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"arrow.down.circle.badge.xmark" withConfiguration:final]];
+      self.imageView.contentMode = UIViewContentModeScaleAspectFill;
+      self.imageView.layer.cornerRadius = 12.0;
+      self.imageView.clipsToBounds = YES;
+      // 增加阴影效果
+      self.imageView.layer.shadowColor = [UIColor blackColor].CGColor;
+      self.imageView.layer.shadowOffset = CGSizeMake(0, 2);
+      self.imageView.layer.shadowOpacity = 0.2;
+      self.imageView.layer.shadowRadius = 4.0;
 
       self.titleLable = [[UILabel alloc] init];
-      self.titleLable.text = @"网络发生故障，请稍后重试";
-      self.titleLable.font = [UIFont systemFontOfSize:20];
+      self.titleLable.text = @"Network error, retry";
+      self.titleLable.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+      // 美化label
+      self.titleLable.numberOfLines = 2;
+      self.titleLable.textColor = [UIColor labelColor];
+      self.titleLable.textAlignment = NSTextAlignmentLeft;
 
       [self.contentView addSubview:self.imageView];
       [self.contentView addSubview:self.titleLable];
+
       [self.imageView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.width.equalTo(self.contentView);
         make.top.equalTo(self.contentView);
         make.left.equalTo(self.contentView);
-        make.height.equalTo(self.contentView).offset(-40);
+        make.right.equalTo(self.contentView);
+        make.height.equalTo(self.imageView.mas_width);
       }];
+
       [self.titleLable mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.width.equalTo(self.contentView);
-        make.height.mas_equalTo(20);
-        make.top.equalTo(self.imageView.mas_bottom).offset(10);
+        make.top.equalTo(self.imageView.mas_bottom).offset(5);
+        make.left.equalTo(self.contentView);
+        make.right.equalTo(self.contentView);
+        make.bottom.equalTo(self.contentView).offset (10);
       }];
     }
     return self;
