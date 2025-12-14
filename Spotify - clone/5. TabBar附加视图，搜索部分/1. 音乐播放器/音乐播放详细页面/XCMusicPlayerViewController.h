@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface XCMusicPlayerViewController : UIViewController
 @property (nonatomic, strong) XCMusicPlayerView* mainView;
 @property (nonatomic, strong) XCMusicPlayerModel* musicPlayerModel;
-
+@property (nonatomic, assign) BOOL isPlaying;
 
 @end
 
