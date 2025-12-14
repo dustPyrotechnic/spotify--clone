@@ -240,7 +240,7 @@
     self.containerImageView.transform = self.scaleTransform;
     self.containerImageView.layer.shadowColor = [UIColor blackColor].CGColor;
     self.containerImageView.layer.shadowOffset = CGSizeMake(0, 10);
-    self.containerImageView.layer.shadowOpacity = 0.5;
+    self.containerImageView.layer.shadowOpacity = 0.5; 
     self.containerImageView.layer.shadowRadius = 10;
     self.containerImageView.layer.masksToBounds = NO;
   }];

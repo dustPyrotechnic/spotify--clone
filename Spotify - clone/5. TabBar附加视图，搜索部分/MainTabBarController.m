@@ -10,6 +10,7 @@
 #import "XCNetworkManager.h"
 
 #import <CoreGraphics/CoreGraphics.h>
+#import <UIKit/UIKit.h>
 
 // 引入四个页面部分内容
 #import "HomePageViewController.h"
@@ -18,9 +19,10 @@
 
 // 引入附加视图
 #import "XCMusicPlayerAccessoryView.h"
-
+// 音乐播放详情页面
 #import "XCMusicPlayerModel.h"
-
+// 搜索界面
+#import "XCSearchViewController.h"
 
 
 // 测试
@@ -34,73 +36,69 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // Do any additional setup after loading the view.
-// 更换一下页面防止卡顿，一会换回来
-  HomePageViewController* homePageController = [[HomePageViewController alloc] init];
-  UINavigationController* homePageNavigationController = [[UINavigationController alloc] initWithRootViewController:homePageController];
+    UITab *homeTab = [[UITab alloc] initWithTitle:@"Home"
+                                            image:[UIImage systemImageNamed:@"house"]
+                                       identifier:@"Home"
+                           viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
+        HomePageViewController *homePageController = [[HomePageViewController alloc] init];
+        return [[UINavigationController alloc] initWithRootViewController:homePageController];
+    }];
 
-  UIViewController* musicWarehousePageController = [[UIViewController alloc] init];
-  UINavigationController* musicWarehouseNavigationController = [[UINavigationController alloc] initWithRootViewController:musicWarehousePageController];
+    UITab *musicTab = [[UITab alloc] initWithTitle:@"Music Warehouse"
+                                             image:[UIImage systemImageNamed:@"music.pages"]
+                                        identifier:@"MusicWarehouse"
+                            viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
+        UIViewController *musicWarehousePageController = [[UIViewController alloc] init];
+        return [[UINavigationController alloc] initWithRootViewController:musicWarehousePageController];
+    }];
 
-  UIViewController* newFoundingViewController = [[UIViewController alloc] init];
-  UINavigationController* newFoundingNavigationController = [[UINavigationController alloc] initWithRootViewController:newFoundingViewController];
+    UITab *foundingTab = [[UITab alloc] initWithTitle:@"New Founding"
+                                                image:[UIImage systemImageNamed:@"star.bubble"]
+                                           identifier:@"NewFounding"
+                               viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
+        UIViewController *newFoundingViewController = [[UIViewController alloc] init];
+        return [[UINavigationController alloc] initWithRootViewController:newFoundingViewController];
+    }];
 
-  UIViewController* broadCastPageViewController = [[UIViewController alloc] init];
-  UINavigationController* broadCasrPageNavigationController = [[UINavigationController alloc] initWithRootViewController:broadCastPageViewController];
+    UITab *broadcastTab = [[UITab alloc] initWithTitle:@"Broad Cast"
+                                                 image:[UIImage systemImageNamed:@"wave.3.up"]
+                                            identifier:@"BroadCast"
+                                viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
+        UIViewController *broadCastPageViewController = [[UIViewController alloc] init];
+        return [[UINavigationController alloc] initWithRootViewController:broadCastPageViewController];
+    }];
 
-  UIImage* homePageImage = [UIImage systemImageNamed:@"house"];
-  UIImage* selectedHomePageImage = [UIImage systemImageNamed:@"house.fill"];
-
-  UIImage* musicWarehouseImage = [UIImage systemImageNamed:@"music.pages"];
-  UIImage* selectedMusicWarehouseImage = [UIImage systemImageNamed:@"music.pages.fill"];
-
-  UIImage* newFoundingImage = [UIImage systemImageNamed:@"star.bubble"];
-  UIImage* selectedNewFoundingImage = [UIImage systemImageNamed:@"star.bubble.fill"];
-
-  UIImage* broadCastImage = [UIImage systemImageNamed:@"wave.3.up"];
-  UIImage* selectedBroadCastImage = [UIImage systemImageNamed:@"wave.3.up.fill"];
-  
-  homePageNavigationController.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Home" image:homePageImage selectedImage:selectedHomePageImage];
-  musicWarehouseNavigationController.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Music Warehouse" image:musicWarehouseImage selectedImage:selectedMusicWarehouseImage];
-  newFoundingNavigationController.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"New Founding" image:newFoundingImage selectedImage:selectedNewFoundingImage];
-  broadCasrPageNavigationController.tabBarItem = [[UITabBarItem alloc] initWithTitle:@"Broad Cast" image:broadCastImage selectedImage:selectedBroadCastImage];
-
-  self.viewControllers = @[homePageNavigationController, musicWarehouseNavigationController, newFoundingNavigationController, broadCasrPageNavigationController];
-  self.delegate = self;
-  self.tabBar.tintColor = [UIColor systemGreenColor];
-  // iOS26收起tabbar部分
-  self.tabBar.layer.borderWidth = 0;
-
-  self.tabBarMinimizeBehavior = UITabBarMinimizeBehaviorOnScrollDown;
-
+    UISearchTab *searchTab = [[UISearchTab alloc] initWithViewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
+      XCSearchViewController *searchViewController = [[XCSearchViewController alloc] init];
+      UINavigationController* navigationVC = [[UINavigationController alloc] initWithRootViewController:searchViewController];
+      //TODO: 完成点击搜索框的变形机制
+      return navigationVC;
+    }];
+    searchTab.automaticallyActivatesSearch = YES;
+    
 
 
+    self.tabs = @[homeTab, musicTab, foundingTab, broadcastTab, searchTab];
 
-  XCMusicPlayerAccessoryView* musicPayerAccessoryView = [[XCMusicPlayerAccessoryView alloc] initWithFrame:CGRectMake(20, 20, self.view.bounds.size.width - 40, 40) withImage:[UIImage imageNamed:@"1.jpeg"] andTitle:@"测试歌曲" withSonger:@"测试歌手" withCondition:NO];
-  // 为block赋值
-  musicPayerAccessoryView.presentPlayerViewControllerBlock = ^(XCMusicPlayerViewController * _Nonnull playerVC) {
-    [self presentViewController:playerVC animated:YES completion:nil];
-  };
-  self.bottomAccessory = [[UITabAccessory alloc] initWithContentView:musicPayerAccessoryView];
-//  [[XCMusicPlayerModel sharedInstance] testPlayAppleMusicSong];
 
-  //TODO: 完成附加视图更新，根据tabbar来进行元素更新
-/*
-  [[XCNetworkManager sharedInstance] getTokenWithCompletion:^(BOOL success) {
-    if (success) {
-      NSLog(@"✅ Token 获取成功，开始请求歌曲数据");
-      // 稍微延迟一下，确保 token 已经保存到 Keychain
-      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [[XCMusicPlayerModel sharedInstance] testPlaySpotifySong];
-      });
-    } else {
-      NSLog(@"❌ Token 获取失败，无法请求歌曲数据");
-    }
-  }];
- */
+    self.delegate = self;
+    self.tabBar.tintColor = [UIColor systemGreenColor];
+
+    self.tabBar.layer.borderWidth = 0;
+
+    self.tabBarMinimizeBehavior = UITabBarMinimizeBehaviorOnScrollDown;
+    XCMusicPlayerAccessoryView *musicPayerAccessoryView = [[XCMusicPlayerAccessoryView alloc] initWithFrame:CGRectMake(20, 20, self.view.bounds.size.width - 40, 40) withImage:[UIImage imageNamed:@"1.jpeg"] andTitle:@"测试歌曲" withSonger:@"测试歌手" withCondition:NO];
+
+    __weak typeof(self) weakSelf = self;
+    musicPayerAccessoryView.presentPlayerViewControllerBlock = ^(XCMusicPlayerViewController * _Nonnull playerVC) {
+        [weakSelf presentViewController:playerVC animated:YES completion:nil];
+    };
+
+    self.bottomAccessory = [[UITabAccessory alloc] initWithContentView:musicPayerAccessoryView];
+
+  XCMusicPlayerModel* model = [XCMusicPlayerModel sharedInstance];
+  [model testPlayAppleMusicSong];
 }
-
-
 - (void) tabBarController:(UITabBarController *)tabBarController didSelectViewController:(UIViewController *)viewController {
   NSLog(@"didSelectViewController: %@", viewController);
   UIImpactFeedbackGenerator* feedbackGenerator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
