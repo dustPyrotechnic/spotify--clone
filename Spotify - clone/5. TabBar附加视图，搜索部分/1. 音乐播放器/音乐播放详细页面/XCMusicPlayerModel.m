@@ -170,7 +170,7 @@ static XCMusicPlayerModel *instance = nil;
 }
 
 - (void)testPlayAppleMusicSong {
-    NSString *const searchTerm = @"大国民";
+    NSString *const searchTerm = @"长城";
     NSString *urlString = @"https://itunes.apple.com/search";
     
     AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];

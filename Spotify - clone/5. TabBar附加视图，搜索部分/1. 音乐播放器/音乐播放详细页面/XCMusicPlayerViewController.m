@@ -22,7 +22,7 @@
   [super viewDidLoad];
   // Do any additional setup after loading the view.
   self.musicPlayerModel = [XCMusicPlayerModel sharedInstance];
-
+  
   // 初始化主视图
   self.mainView = [[XCMusicPlayerView alloc] init];
   // 设置响应

@@ -138,7 +138,7 @@
     // 使用Masonry进行自动布局
     [self setupConstraints];
     
-    self.scaleTransform = CGAffineTransformMakeScale(1.4, 1.4);
+    self.scaleTransform = CGAffineTransformMakeScale(1.3, 1.3);
 
 //    [self letAlbumImageBig];
   }
@@ -240,7 +240,7 @@
     self.containerImageView.transform = self.scaleTransform;
     self.containerImageView.layer.shadowColor = [UIColor blackColor].CGColor;
     self.containerImageView.layer.shadowOffset = CGSizeMake(0, 10);
-    self.containerImageView.layer.shadowOpacity = 0.5;
+    self.containerImageView.layer.shadowOpacity = 0.5; 
     self.containerImageView.layer.shadowRadius = 10;
     self.containerImageView.layer.masksToBounds = NO;
   }];

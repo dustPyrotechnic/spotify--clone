@@ -16,6 +16,8 @@
             stopOnStyle = "0">
          </BreakpointContent>
       </BreakpointProxy>
+<<<<<<< HEAD
+=======
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
@@ -112,5 +114,6 @@
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
+>>>>>>> 美化首页
    </Breakpoints>
 </Bucket>

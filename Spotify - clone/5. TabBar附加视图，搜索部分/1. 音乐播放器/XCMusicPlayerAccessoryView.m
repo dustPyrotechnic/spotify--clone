@@ -126,7 +126,17 @@
   // TODO: 弹出音乐播放器视图
   NSLog(@"弹出音乐播放器视图");
   XCMusicPlayerViewController* playerVC = [[XCMusicPlayerViewController alloc] init];
-  
+  playerVC.modalPresentationStyle = UIModalPresentationPageSheet;
+  UISheetPresentationController *sheet = playerVC.sheetPresentationController;
+  // 设置停靠点，大约全屏的高度
+  sheet.detents = @[[UISheetPresentationControllerDetent largeDetent]];
+  // 显示顶部的小把手 (Grabber)
+  sheet.prefersGrabberVisible = YES;
+  sheet.preferredCornerRadius = 20.0;
+  playerVC.popoverPresentationController.sourceItem = self;
+  if (self.presentPlayerViewControllerBlock) {
+    self.presentPlayerViewControllerBlock(playerVC);
+  }
 }
 
 - (void) handleSwipe {
