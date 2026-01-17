@@ -7,6 +7,8 @@
 
 #import "XCALbumDetailViewController.h"
 
+#import "XCAlbumDetailCell.h"
+
 #import <Masonry/Masonry.h>
 
 @interface XCALbumDetailViewController () <UITableViewDelegate, UITableViewDataSource>
@@ -33,7 +35,10 @@
   // 设置 tableView 代理和数据源
   self.mainView.tableView.delegate = self;
   self.mainView.tableView.dataSource = self;
-  
+
+  // 注册cell
+  [self.mainView.tableView registerClass:[XCAlbumDetailCell class] forCellReuseIdentifier:@"XCAlbumDetailCell"];
+
   // 设置约束 - 填充整个视图
   [self.mainView mas_makeConstraints:^(MASConstraintMaker *make) {
     make.edges.equalTo(self.view);
@@ -48,17 +53,14 @@
 #pragma mark - UITableViewDataSource
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
   // TODO: 返回实际歌曲数量
-  return 0;
+  return 20;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
   // TODO: 创建并配置歌曲列表 cell
-  UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"TrackCell"];
-  if (!cell) {
-    cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"TrackCell"];
-    cell.backgroundColor = [UIColor clearColor];
-    cell.textLabel.textColor = [UIColor labelColor];
-    cell.detailTextLabel.textColor = [UIColor secondaryLabelColor];
+  XCAlbumDetailCell *cell = [tableView dequeueReusableCellWithIdentifier:@"XCAlbumDetailCell"];
+  if (cell) {
+    [self testCell:cell];
   }
   return cell;
 }
@@ -69,6 +71,11 @@
   // TODO: 处理歌曲点击事件，开始播放
 }
 
+- (void) testCell:(XCAlbumDetailCell*) cell {
+  cell.mainImageView.image = [UIImage imageNamed:@"test.jpg"];
+  cell.songLabel.text = @"Deadman's Gun";
+  cell.authorLabel.text = @"Ashtar Command";
+}
 /*
 #pragma mark - Navigation
 

@@ -27,9 +27,18 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
   self.mainView = [[XCSearchView alloc] init];
+  self.searchController = [[UISearchController alloc] init];
+  self.navigationItem.searchController = self.searchController;
+  self.definesPresentationContext = YES;
+  if (self.searchController.active) {
+    [self.searchController setActive:NO];
+  }
+
 
 }
+- (void) updateSearchResultsForSearchController:(UISearchController *)searchController {
 
+}
 /*
 #pragma mark - Navigation
 

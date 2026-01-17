@@ -10,6 +10,7 @@
 #import <UICKeyChainStore/UICKeyChainStore.h>
 #import <AFNetworking/AFNetworking.h>
 #import <AVFoundation/AVFoundation.h>
+#import <MediaPlayer/MediaPlayer.h>
 
 @implementation XCMusicPlayerModel
 #pragma mark - 单例模式代码
@@ -38,7 +39,7 @@ static XCMusicPlayerModel *instance = nil;
 - (id)mutableCopyWithZone:(NSZone *)zone {
   return self;
 }
-#pragma mark - 音乐播放部分代码
+#pragma mark - 音乐测试播放部分代码
 - (void)testPlaySpotifySong {
     // 1. 使用搜索查询 (Ed Sheeran - Shape of You)
     // 根据网络上的解决方案，使用 search 端点可以获取到 preview_url
@@ -241,6 +242,52 @@ static XCMusicPlayerModel *instance = nil;
     }];
 }
 
+#pragma mark - 音乐播放代码
+- (void)pauseMusic {
+  // 完成音乐的播放操作和进度条更新
+  [self.player pause];
+
+}
+
+#pragma mark - 对接远程控制器
+// 与系统控制器绑定操作
+- (void)setupRemoteCommands {
+  // 获取全局的远程命令中心
+  MPRemoteCommandCenter *commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
+  [commandCenter.playCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
+    // TODO: 自己的播放操作
+    return MPRemoteCommandHandlerStatusSuccess;
+  }];
+  [commandCenter.pauseCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
+    // TODO: 自己的暂停操作
+    return MPRemoteCommandHandlerStatusSuccess;
+  }];
+  [commandCenter.changePlaybackPositionCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
+    MPChangePlaybackPositionCommandEvent *positionEvent = (MPChangePlaybackPositionCommandEvent *)event;
+    // TODO: 自己的调整播放时间的操作
+    return MPRemoteCommandHandlerStatusSuccess;
+  }];
+}
+
+// 每次切换的时候更新信息
+- (void)updateLockScreenInfo {
+  MPNowPlayingInfoCenter *infoCenter = [MPNowPlayingInfoCenter defaultCenter];
+  NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+
+  // 标题、歌手
+  [dict setObject:@"情非得已" forKey:MPMediaItemPropertyTitle];
+  [dict setObject:@"群星" forKey:MPMediaItemPropertyArtist];
+
+  // 时长与进度
+  [dict setObject:@(267.0) forKey:MPMediaItemPropertyPlaybackDuration]; // 总时长
+  [dict setObject:@(10.0) forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime]; // 当前播放到的时间
+  [dict setObject:@(1.0) forKey:MPNowPlayingInfoPropertyPlaybackRate]; // 播放速率
+
+
+  [infoCenter setNowPlayingInfo:dict];
+}
+#pragma mark - 音乐的数据增删查改
+// TODO: 完成从沙盒里取数据和放数据和查数据
 
 
 @end

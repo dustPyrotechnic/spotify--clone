@@ -9,11 +9,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface XCSearchView : UIView
-// 搜索页面
-@property (nonatomic, strong) UISearchController* searchController;
-// 假的输入框
-@property (nonatomic, strong) UITextField* searchTexttfield;
+@interface XCSearchView : UIView 
+
+// 展示结果部分
+@property (nonatomic, strong) UITableView* resultTableView;
 @end
 
 NS_ASSUME_NONNULL_END

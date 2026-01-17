@@ -6,9 +6,8 @@
 //
 /*
  这是网络请求单例
- 我们会在网络请求单例中做到几个功能
- 1. Post请求token，并存储在UICKeyChainStore这个第三方库里进行保存
- 2. 根据token来进行请求数据，如果遇到token失效，将任务加入队列
+Post请求token，并存储在UICKeyChainStore这个第三方库里进行保存
+根据token来进行请求数据，如果遇到token失效，将任务加入队列
  */
 
 #import <Foundation/Foundation.h>
@@ -20,6 +19,8 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)sharedInstance;
 - (void)getTokenWithCompletion:(void(^)(BOOL success))completion;
 - (void) getDataOfAllAlbums:(NSMutableArray*) array ;
+/// 使用网易云的API来请求数据（支持分页）
+- (void)getDataOfAllAlbumsFromWY:(NSMutableArray *)array offset:(NSInteger)offset limit:(NSInteger)limit withCompletion:(void(^)(BOOL success))completion;
 @end
 
 NS_ASSUME_NONNULL_END

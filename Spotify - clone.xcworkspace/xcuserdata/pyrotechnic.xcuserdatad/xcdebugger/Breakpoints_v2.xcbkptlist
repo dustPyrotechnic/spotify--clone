@@ -5,115 +5,100 @@
    version = "2.0">
    <Breakpoints>
       <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.ExceptionBreakpoint">
-         <BreakpointContent
-            uuid = "D1B9E2B3-35B3-454A-850C-9D2663E0BF6E"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            breakpointStackSelectionBehavior = "1"
-            scope = "1"
-            stopOnStyle = "0">
-         </BreakpointContent>
-      </BreakpointProxy>
-<<<<<<< HEAD
-=======
-      <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "07A1838E-4CF5-4707-AFFE-0D048AD020DA"
+            uuid = "CB16799B-AE14-49F6-B20D-AA75DB00797D"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "Spotify - clone/5. TabBar&#x9644;&#x52a0;&#x89c6;&#x56fe;&#xff0c;&#x641c;&#x7d22;&#x90e8;&#x5206;/1. &#x97f3;&#x4e50;&#x64ad;&#x653e;&#x5668;/XCMusicPayerAccessoryView.m"
+            filePath = "Spotify - clone/1. &#x4e3b;&#x9875;&#x90e8;&#x5206;/HomePageViewController.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "102"
-            endingLineNumber = "102"
-            landmarkName = "-pressStopOrContinueButton:"
+            startingLineNumber = "26"
+            endingLineNumber = "26"
+            landmarkName = "-init"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "0A7E16F9-C72E-4773-8170-FA10A0035B26"
+            uuid = "91B4054B-B1F0-4607-84A0-328C229EFD03"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "Spotify - clone/6. &#x7f51;&#x7edc;&#x8bf7;&#x6c42;&#x90e8;&#x5206;/XCNetworkManager.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "163"
-            endingLineNumber = "163"
-            landmarkName = "-getDataOfAllAlbums:"
+            startingLineNumber = "277"
+            endingLineNumber = "277"
+            landmarkName = "-getDataOfAllAlbumsFromWY:offset:limit:withCompletion:"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "7269A8DF-85AB-48CC-8668-9B544E8CA220"
+            uuid = "EF0CE5F5-3F97-47F3-A06F-2E14EC0041C8"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "Spotify - clone/6. &#x7f51;&#x7edc;&#x8bf7;&#x6c42;&#x90e8;&#x5206;/XCNetworkManager.m"
+            filePath = "Spotify - clone/1. &#x4e3b;&#x9875;&#x90e8;&#x5206;/cells/collectionViewCells/HomePageViewCollectionViewCell.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "165"
-            endingLineNumber = "165"
-            landmarkName = "-getDataOfAllAlbums:"
+            startingLineNumber = "71"
+            endingLineNumber = "71"
+            landmarkName = "-getDataAndLayout"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "6887D6B6-9A55-460B-A914-FB00E0D0A4FF"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "Spotify - clone/1. &#x4e3b;&#x9875;&#x90e8;&#x5206;/HomePageViewController.m"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "34"
-            endingLineNumber = "34"
-            landmarkName = "-homePageDataLoaded:"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "C8A4E06D-7D10-471D-9873-5D7E13D167D5"
+            uuid = "C8118011-76B5-43E4-8AA1-811436C9917B"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "Spotify - clone/1. &#x4e3b;&#x9875;&#x90e8;&#x5206;/HomePageViewController.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "35"
-            endingLineNumber = "35"
-            landmarkName = "-homePageDataLoaded:"
+            startingLineNumber = "213"
+            endingLineNumber = "213"
+            landmarkName = "-collectionView:cellForItemAtIndexPath:"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "FB2A5BBF-301A-4517-AF23-E65237732C2F"
+            uuid = "AD46D542-45C4-460B-8AED-1DE2E97B1CD1"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "Spotify - clone/1. &#x4e3b;&#x9875;&#x90e8;&#x5206;/HomePageViewController.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "175"
-            endingLineNumber = "175"
-            landmarkName = "-tableView:viewForHeaderInSection:"
+            startingLineNumber = "130"
+            endingLineNumber = "130"
+            landmarkName = "-viewDidLoad"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
->>>>>>> 美化首页
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "33A4F483-5B5E-494F-9BDD-F55AB3BB838A"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Spotify - clone/1. &#x4e3b;&#x9875;&#x90e8;&#x5206;/HomePageViewController.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "45"
+            endingLineNumber = "45"
+            landmarkName = "-refreshData:"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
    </Breakpoints>
 </Bucket>

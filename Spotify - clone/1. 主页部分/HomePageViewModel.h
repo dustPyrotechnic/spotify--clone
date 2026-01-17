@@ -15,8 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 /// 二维数组，存储5个10个的数组
 @property (nonatomic, strong) NSMutableArray* dataOfAllAlbums;
 @property (atomic, assign) NSInteger offset;
-// 拿到所有的网络数据
-- (void) getDataOfAllAlbums;
+- (void)getDataOfAllAlbumsWithCompletion:(void(^)(BOOL success)) completion;
 @end
 
 NS_ASSUME_NONNULL_END

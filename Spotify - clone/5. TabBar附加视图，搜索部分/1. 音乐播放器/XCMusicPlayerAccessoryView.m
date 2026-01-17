@@ -103,11 +103,12 @@
 - (void) pressStopOrContinueButton:(UIButton*)sender {
   NSLog(@"按下播放按钮");
   self.isPlaying = !self.isPlaying;
-
+  // TODO: 暂停操作
   if (self.isPlaying) {
 //    [sender setImage:[UIImage systemImageNamed:@"pause.fill"] forState:UIControlStateNormal];
     [sender.imageView setSymbolImage:[UIImage systemImageNamed:@"pause.fill"] withContentTransition:[NSSymbolReplaceContentTransition replaceDownUpTransition]];
     [sender setImage:[UIImage systemImageNamed:@"pause.fill"] forState:UIControlStateNormal];
+
   } else {
 //    [sender setImage:[UIImage systemImageNamed:@"play.fill"] forState:UIControlStateNormal];
     [sender.imageView setSymbolImage:[UIImage systemImageNamed:@"play.fill"] withContentTransition:[NSSymbolReplaceContentTransition replaceDownUpTransition]];
@@ -115,7 +116,7 @@
   }
 
 }
-
+// TODO: 播放下一首歌的逻辑
 - (void) pressNextButton:(UIButton*)sender {
   NSLog(@"播放下一首歌");
   self.isPlaying = NO;
@@ -123,7 +124,6 @@
 }
 
 - (void) handleTap:(UITapGestureRecognizer*) gestureRecognizer {
-  // TODO: 弹出音乐播放器视图
   NSLog(@"弹出音乐播放器视图");
   XCMusicPlayerViewController* playerVC = [[XCMusicPlayerViewController alloc] init];
   playerVC.modalPresentationStyle = UIModalPresentationPageSheet;

@@ -96,8 +96,8 @@
 
     self.bottomAccessory = [[UITabAccessory alloc] initWithContentView:musicPayerAccessoryView];
 
-  XCMusicPlayerModel* model = [XCMusicPlayerModel sharedInstance];
-  [model testPlayAppleMusicSong];
+//  XCMusicPlayerModel* model = [XCMusicPlayerModel sharedInstance];
+//  [model testPlayAppleMusicSong];
 }
 - (void) tabBarController:(UITabBarController *)tabBarController didSelectViewController:(UIViewController *)viewController {
   NSLog(@"didSelectViewController: %@", viewController);

@@ -12,9 +12,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface XCSearchViewController : UIViewController
+@interface XCSearchViewController : UIViewController <UISearchResultsUpdating>
 @property (nonatomic, strong) XCSearchView* mainView;
 @property (nonatomic, strong) XCSearchModel* model;
+
+// 搜索页面
+@property (nonatomic, strong) UISearchController* searchController;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -13,6 +13,7 @@
 
 #import "MainTabBarController.h"
 
+#import "XCALbumDetailViewController.h"
 
 
 @interface SceneDelegate ()
@@ -32,12 +33,15 @@
   self.window.rootViewController = mainTabBarController;
   [self.window makeKeyAndVisible];
 
+//  [self changeViewToDetailPage];
 
+/*
   // 测试代码
   XCNetworkManager* testManager = [XCNetworkManager sharedInstance];
   [testManager getTokenWithCompletion:^(BOOL success) {
     NSLog(@"请求到token");
   }];
+ */
 }
 
 
@@ -73,5 +77,9 @@
   // to restore the scene back to its current state.
 }
 
-
+#pragma mark test
+- (void) changeViewToDetailPage{
+  self.window.rootViewController = [[XCALbumDetailViewController alloc] init];
+  [self.window makeKeyAndVisible];
+}
 @end

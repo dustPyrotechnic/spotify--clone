@@ -45,13 +45,19 @@
     self.playButton = [UIButton buttonWithConfiguration:[UIButtonConfiguration filledButtonConfiguration] primaryAction:playAction];
     self.playButton.configuration.baseBackgroundColor = [UIColor systemGreenColor];
     self.playButton.configuration.baseForegroundColor = [UIColor whiteColor];
-    self.playButton.configuration.title = @"播放";
+    NSMutableAttributedString *playAttributedTitle = [[NSMutableAttributedString alloc] initWithString:@"播放"];
+    [playAttributedTitle addAttribute:NSFontAttributeName
+                                value:[UIFont boldSystemFontOfSize:18]
+                                range:NSMakeRange(0, playAttributedTitle.length)];
+    self.playButton.configuration.attributedTitle = playAttributedTitle;
+    
     self.playButton.configuration.image = [UIImage systemImageNamed:@"play.fill"];
     self.playButton.configuration.imagePlacement = NSDirectionalRectEdgeLeading;
     self.playButton.configuration.imagePadding = 8;
     self.playButton.layer.cornerRadius = 25;
     self.playButton.clipsToBounds = YES;
-    
+    self.playButton.tintColor = [UIColor systemGreenColor];
+
     // 初始化随机播放按钮
     UIAction* randomAction = [UIAction actionWithTitle:@"随机播放" image:[UIImage systemImageNamed:@"shuffle"] identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
       NSLog(@"随机播放该列表");
@@ -59,13 +65,17 @@
     self.randomButton = [UIButton buttonWithConfiguration:[UIButtonConfiguration filledButtonConfiguration] primaryAction:randomAction];
     self.randomButton.configuration.baseBackgroundColor = [UIColor systemGreenColor];
     self.randomButton.configuration.baseForegroundColor = [UIColor whiteColor];
-    self.randomButton.configuration.title = @"随机播放";
+    NSMutableAttributedString *randomAttributedTitle = [[NSMutableAttributedString alloc] initWithString:@"随机播放"];
+    [randomAttributedTitle addAttribute:NSFontAttributeName
+                                  value:[UIFont boldSystemFontOfSize:18]
+                                  range:NSMakeRange(0, randomAttributedTitle.length)];
+    self.randomButton.configuration.attributedTitle = randomAttributedTitle;
     self.randomButton.configuration.image = [UIImage systemImageNamed:@"shuffle"];
     self.randomButton.configuration.imagePlacement = NSDirectionalRectEdgeLeading;
     self.randomButton.configuration.imagePadding = 8;
     self.randomButton.layer.cornerRadius = 25;
     self.randomButton.clipsToBounds = YES;
-    
+    self.randomButton.tintColor = [UIColor systemGreenColor];
     // 初始化表格视图
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.backgroundColor = [UIColor clearColor];
@@ -136,6 +146,8 @@
     make.right.equalTo(self);
     make.bottom.equalTo(self);
   }];
+  [self testView];
+  
 }
 /*
 // Only override drawRect: if you perform custom drawing.
@@ -144,5 +156,12 @@
     // Drawing code
 }
 */
+
+- (void) testView {
+  self.albumImageView.image = [UIImage imageNamed:@"test.jpg"];
+  self.titleLabel.text = @"RED DEAD";
+  self.refreshDateLabel.text = @"2019年";
+  
+}
 
 @end

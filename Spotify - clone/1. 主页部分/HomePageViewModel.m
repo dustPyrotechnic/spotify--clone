@@ -8,28 +8,25 @@
 #import "HomePageViewModel.h"
 
 #import "XCNetworkManager.h"
-
+#import "XC-YYAlbumData.h"
 
 @implementation HomePageViewModel
 - (instancetype) init {
   self.dataOfAllAlbums = [[NSMutableArray alloc] init];
-  // 填充数组为空数组
-  for (int i = 0; i < 5; i++) {
-    NSMutableArray* albumArray = [[NSMutableArray alloc] init];
-    for (int j = 0; j < 10; j++) {
-      XCAlbumSimpleData* album = [[XCAlbumSimpleData alloc] init];
-      album.imageURL = nil;
-      album.nameAlbum = nil;
-      album.idOfAlbum = nil;
-      [albumArray addObject:album];
-    }
-    [self.dataOfAllAlbums addObject:albumArray];
+  // 填充空白数据
+  for (int i = 0; i < 50; i++) {
+    XC_YYAlbumData* whiteData = [[XC_YYAlbumData alloc] init];
+    whiteData.name = @"";
+    whiteData.coverImgUrl = @"";
+    [self.dataOfAllAlbums addObject:whiteData];
   }
+
+  self.offset = 0;
   return self;
 }
-// 共计50个
-- (void) getDataOfAllAlbums {
-  XCNetworkManager* networkManager = [XCNetworkManager sharedInstance];
-  [networkManager getDataOfAllAlbums:self.dataOfAllAlbums];
+
+- (void)getDataOfAllAlbumsWithCompletion:(void (^)(BOOL))completion {
+  [[XCNetworkManager sharedInstance] getDataOfAllAlbumsFromWY:self.dataOfAllAlbums offset:self.offset limit:50 withCompletion:completion];
+  self.offset += 50;
 }
 @end

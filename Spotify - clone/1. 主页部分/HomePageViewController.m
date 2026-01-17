@@ -22,32 +22,17 @@
   self = [super init];
   if (self) {
     self.model = [[HomePageViewModel alloc] init];
-    [[XCNetworkManager sharedInstance] getTokenWithCompletion:^(BOOL success) {
-      [self.model getDataOfAllAlbums];
-    }];
-//    [self.model getDataOfAllAlbums];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(homePageDataLoaded:) name:@"HomePageDataLoaded" object:nil];
   }
   return self;
 }
-- (void) homePageDataLoaded:(NSNotification*)notification {
-//  NSLog(@"首页数据加载完成");
-  
-  // 打印数据统计信息用于调试
-//  NSLog(@"数据统计: 共有 %lu 组数据", (unsigned long)self.model.dataOfAllAlbums.count);
-  for (int i = 0; i < self.model.dataOfAllAlbums.count; i++) {
-    NSArray *group = self.model.dataOfAllAlbums[i];
-//    NSLog(@"第 %d 组: %lu 个元素", i, (unsigned long)(group ? group.count : 0));
-  }
-  
-  // 在主线程刷新UI
+- (void)homePageDataLoaded:(NSNotification*)notification {
   dispatch_async(dispatch_get_main_queue(), ^{
-    // 刷新UITableView
+    [self.mainView.mainTableView.refreshControl endRefreshing];
     [self.mainView.mainTableView reloadData];
     
-    // 刷新UICollectionView（延迟一点确保tableView已刷新）
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-      for (int i = 0; i < 5 && i < self.model.dataOfAllAlbums.count; i++) {
+      for (int i = 0; i < self.model.dataOfAllAlbums.count; i++) {
         HomePageViewCollectionViewTableViewCell* cell = [self.mainView.mainTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:i]];
         if (cell && cell.collectionView) {
           [cell.collectionView reloadData];
@@ -56,6 +41,20 @@
     });
   });
 }
+
+- (void)refreshData:(UIRefreshControl *)refreshControl {
+  NSLog(@"开始刷新");
+  [self.model getDataOfAllAlbumsWithCompletion:^(BOOL success) {
+    if (success) {
+      NSLog(@"刷新到数据");
+      [[NSNotificationCenter defaultCenter] postNotificationName:@"HomePageDataLoaded" object:nil];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [refreshControl endRefreshing];
+      });
+    }
+  }];
+}
+
 - (void) dealloc {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
@@ -110,20 +109,27 @@
   // 统一使用系统背景色，保持整体简洁
   self.view.backgroundColor = [UIColor systemBackgroundColor];
 
-  // tableView相关部分
   self.mainView.mainTableView.delegate = self;
   self.mainView.mainTableView.dataSource = self;
-  // 隐藏灰色分割线
   self.mainView.mainTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-  // 隐藏滚动条
   self.mainView.mainTableView.showsVerticalScrollIndicator = NO;
-  // 高度自适应
   self.mainView.mainTableView.estimatedRowHeight = 200;
   self.mainView.mainTableView.rowHeight = UITableViewAutomaticDimension;
+
+  UIRefreshControl *refreshControl = [[UIRefreshControl alloc] init];
+  [refreshControl addTarget:self action:@selector(refreshData:) forControlEvents:UIControlEventValueChanged];
+  self.mainView.mainTableView.refreshControl = refreshControl;
 
   [self.mainView.mainTableView registerClass:[HomePageViewCollectionViewTableViewCell class] forCellReuseIdentifier:@"HomePageViewCollectionViewTableViewCell"];
   
   [self.view addSubview:self.mainView];
+  
+  [self.model getDataOfAllAlbumsWithCompletion:^(BOOL success) {
+    if (success) {
+      NSLog(@"初始数据加载成功");
+      [[NSNotificationCenter defaultCenter] postNotificationName:@"HomePageDataLoaded" object:nil];
+    }
+  }];
   // // 测试播放器页面展示
   // XCMusicPayerAccessoryView* musicPayerAccessoryView = [[XCMusicPayerAccessoryView alloc] initWithFrame:CGRectMake(20, 20, self.view.bounds.size.width - 40, 40) withImage:[UIImage imageNamed:@"1.jpeg"] andTitle:@"测试歌曲" withSonger:@"测试歌手" withCondition:NO];
   // [self.view addSubview:musicPayerAccessoryView];
@@ -163,6 +169,9 @@
   return cell;
 }
 
+
+
+
 - (UIView*) tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
   NSArray* heightArray = @[@50,@40,@30,@30,@40];
   NSArray* titleArray = @[@"Picks",
@@ -170,13 +179,11 @@
                           @"For You",
                           @"Popular",
                           @"Hot Mixes"];
-  // 给一个大标题，左侧对齐，字体大小根据不同的节大小不同，并且内容不同
-  // 使用自动布局来约束
-  UIView* headView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, (CGFloat)[heightArray[section] integerValue])];
-  // 创建标题
+  NSInteger safeSection = MIN(section, heightArray.count - 1);
+  UIView* headView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, (CGFloat)[heightArray[safeSection] integerValue])];
   UILabel* titleLabel = [[UILabel alloc] init];
-  titleLabel.text = titleArray[section];
-  titleLabel.font = [UIFont systemFontOfSize:[heightArray[section] integerValue] weight:UIFontWeightSemibold];
+  titleLabel.text = safeSection < titleArray.count ? titleArray[safeSection] : @"";
+  titleLabel.font = [UIFont systemFontOfSize:[heightArray[safeSection] integerValue] weight:UIFontWeightSemibold];
   titleLabel.textColor = [UIColor labelColor];
   titleLabel.textAlignment = NSTextAlignmentLeft;
   [headView addSubview:titleLabel];
@@ -188,58 +195,30 @@
 }
 - (CGFloat) tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
   NSArray* heightArray = @[@50,@40,@30,@30,@40];
-  return (CGFloat)[heightArray[section] integerValue];
+  NSInteger safeSection = MIN(section, heightArray.count - 1);
+  return (CGFloat)[heightArray[safeSection] integerValue];
 }
 - (CGFloat) tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
   return 5;
 }
+
 #pragma mark -UICollectionView
 - (NSInteger) numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
   return 1;
 }
 - (NSInteger) collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    // 根据实际数据返回数量，避免访问空数据
-    NSInteger index = collectionView.tag - 100;
-    if (index >= 0 && index < self.model.dataOfAllAlbums.count) {
-        NSArray *dataArray = self.model.dataOfAllAlbums[index];
-        if (dataArray && dataArray.count > 0) {
-            return dataArray.count;
-        }
-    }
-    return 0; // 数据未加载时返回0
+  return 10;
 }
 
 - (UICollectionViewCell*) collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
   HomePageViewCollectionViewCell* cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"HomePageViewCollectionViewCell" forIndexPath:indexPath];
-  
-  // 安全获取数据索引
+
   NSInteger dataIndex = collectionView.tag - 100;
-  
-  // 安全检查：确保索引有效且数据已加载
-  if (dataIndex < 0 || dataIndex >= self.model.dataOfAllAlbums.count) {
-    NSLog(@"⚠️ 数据索引越界: tag=%ld, dataIndex=%ld, 数组长度=%lu", 
-          (long)collectionView.tag, (long)dataIndex, (unsigned long)self.model.dataOfAllAlbums.count);
-    return cell;
-  }
-  
-  NSArray* dataArray = self.model.dataOfAllAlbums[dataIndex];
-  
-  // 安全检查：确保数组存在且索引有效
-  if (!dataArray || dataArray.count == 0) {
-    NSLog(@"⚠️ 数据数组为空: dataIndex=%ld", (long)dataIndex);
-    return cell;
-  }
-  
-  if (indexPath.row >= dataArray.count) {
-    NSLog(@"⚠️ 数组索引越界: row=%ld, 数组长度=%lu", (long)indexPath.row, (unsigned long)dataArray.count);
-    return cell;
-  }
-  
-  XCAlbumSimpleData* album = dataArray[indexPath.row];
-  
+  // dataIndex * 10 + row
+  XC_YYAlbumData* album = self.model.dataOfAllAlbums[dataIndex * 10 + indexPath.row];
   // 安全检查：确保album对象有效
   if (!album) {
-    NSLog(@"⚠️ album对象为空: dataIndex=%ld, row=%ld", (long)dataIndex, (long)indexPath.row);
+    NSLog(@"album对象为空: dataIndex=%ld, row=%ld", (long)dataIndex, (long)indexPath.row);
     return cell;
   }
   

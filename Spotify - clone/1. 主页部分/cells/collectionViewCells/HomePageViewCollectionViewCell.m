@@ -59,9 +59,26 @@
     }
     return self;
 }
+- (void)prepareForReuse {
+  [super prepareForReuse];
+  // 重置内容，避免复用导致的闪动
+  self.imageView.image = nil;
+  self.titleLable.text = @"";
+}
 - (void) getDataAndLayout {
-  NSURL* url = [NSURL URLWithString:self.data.imageURL];
-  [self.imageView sd_setImageWithURL:url];
-  [self.titleLable setText:self.data.nameAlbum];
+  // 为当前加载生成唯一标识
+  
+  self.titleLable.text = self.data.name ?: @"";
+  self.imageView.image = nil;
+  
+  NSURL* url = [NSURL URLWithString:self.data.coverImgUrl];
+  [self.imageView sd_setImageWithURL:url
+                    placeholderImage:nil
+                             options:SDWebImageRetryFailed | SDWebImageLowPriority
+                           completed:^(UIImage * _Nullable image, NSError * _Nullable error, SDImageCacheType cacheType, NSURL * _Nullable imageURL) {
+    if (image) {
+      self.imageView.image = image;
+    }
+  }];
 }
 @end

@@ -12,8 +12,11 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface XCMusicPlayerModel : NSObject
+/// 全局的音乐播放器
 @property (nonatomic, strong) AVPlayer *player;
 + (instancetype)sharedInstance;
+
+// 测试方法
 - (void)testPlaySpotifySong;
 - (void)testPlaySpotifySong2;
 - (void)testPlayAppleMusicSong;

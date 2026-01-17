@@ -9,9 +9,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface XCAlbumDetailCell : UIView
-@property (nonatomic, strong) UIImageView* imageView;
-
+@interface XCAlbumDetailCell : UITableViewCell
+// 显示歌曲照片
+@property (nonatomic, strong) UIImageView* mainImageView;
+// 显示歌曲名字
+@property (nonatomic, strong) UILabel* songLabel;
+// 显示作者名字
+@property (nonatomic, strong) UILabel* authorLabel;
+// 显示菜单
+@property (nonatomic, strong) UIButton* menuButton;
 @end
 
 NS_ASSUME_NONNULL_END

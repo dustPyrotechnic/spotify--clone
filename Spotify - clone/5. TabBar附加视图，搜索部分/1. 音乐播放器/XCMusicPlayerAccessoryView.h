@@ -7,6 +7,7 @@
 
 #import <UIKit/UIKit.h>
 #import "XCMusicPlayerViewController.h"
+#import "XCMusicPlayerModel.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
