@@ -228,6 +228,16 @@
   return cell;
 }
 
+- (void) collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
+  NSLog(@"[主页控制器]：点击了标签%ld的collectionView的第%ld个",collectionView.tag,(long)indexPath.row);
+}
+
+- (void) collectionView:(UICollectionView *)collectionView prefetchItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
+  // TODO: 使用多线程实现图片的下载内容
+
+}
+
+#pragma mark 其余部分内容
 - (void) pressBtn:(UIBarButtonItem*)sender {
   NSLog(@"%@按钮被点击",sender.title);
   // 在按下后，将颜色改为绿色，并遍历属性数组，恢复其他的颜色

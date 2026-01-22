@@ -26,7 +26,7 @@
 }
 
 - (void)getDataOfAllAlbumsWithCompletion:(void (^)(BOOL))completion {
-  [[XCNetworkManager sharedInstance] getDataOfAllAlbumsFromWY:self.dataOfAllAlbums offset:self.offset limit:50 withCompletion:completion];
+  [[XCNetworkManager sharedInstance] getAlbumsFromWY:self.dataOfAllAlbums offset:self.offset limit:50 withCompletion:completion];
   self.offset += 50;
 }
 @end

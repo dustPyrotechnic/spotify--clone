@@ -30,9 +30,9 @@
             filePath = "Spotify - clone/6. &#x7f51;&#x7edc;&#x8bf7;&#x6c42;&#x90e8;&#x5206;/XCNetworkManager.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "277"
-            endingLineNumber = "277"
-            landmarkName = "-getDataOfAllAlbumsFromWY:offset:limit:withCompletion:"
+            startingLineNumber = "279"
+            endingLineNumber = "279"
+            landmarkName = "-getDataOfPlaylistsFromWY:offset:limit:withCompletion:"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -97,6 +97,70 @@
             startingLineNumber = "45"
             endingLineNumber = "45"
             landmarkName = "-refreshData:"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "31D33B11-4A1F-45A4-8C1E-DC7278DF9BED"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Spotify - clone/6. &#x7f51;&#x7edc;&#x8bf7;&#x6c42;&#x90e8;&#x5206;/XCNetworkManager.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "312"
+            endingLineNumber = "312"
+            landmarkName = "-getAlbumsFromWY:offset:limit:withCompletion:"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "08FEB827-ABA1-40F7-A3C7-08DE24BB22DA"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Spotify - clone/1. &#x4e3b;&#x9875;&#x90e8;&#x5206;/HomePageViewController.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "44"
+            endingLineNumber = "44"
+            landmarkName = "-refreshData:"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "1A01243E-5068-466C-80D8-E1F81C15EC26"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Spotify - clone/1. &#x4e3b;&#x9875;&#x90e8;&#x5206;/HomePageViewModel.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "29"
+            endingLineNumber = "29"
+            landmarkName = "-getDataOfAllAlbumsWithCompletion:"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "EBB59BD4-FC2D-43B5-AFB5-CF684DB70996"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Spotify - clone/6. &#x7f51;&#x7edc;&#x8bf7;&#x6c42;&#x90e8;&#x5206;/XCNetworkManager.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "314"
+            endingLineNumber = "314"
+            landmarkName = "-getAlbumsFromWY:offset:limit:withCompletion:"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

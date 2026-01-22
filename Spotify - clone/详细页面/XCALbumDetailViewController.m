@@ -16,6 +16,7 @@
 @end
 
 @implementation XCALbumDetailViewController
+#pragma mark - lifeCycle
 - (instancetype) init {
   self = [super init];
   if (self) {
@@ -46,9 +47,6 @@
 
 }
 
-- (void) testView {
-  self.mainView.albumImageView.image = [UIImage imageNamed:@"testImage2.jpg"];
-}
 
 #pragma mark - UITableViewDataSource
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
@@ -76,6 +74,12 @@
   cell.songLabel.text = @"Deadman's Gun";
   cell.authorLabel.text = @"Ashtar Command";
 }
+
+#pragma mark - 测试方法
+- (void) testView {
+  self.mainView.albumImageView.image = [UIImage imageNamed:@"testImage2.jpg"];
+}
+
 /*
 #pragma mark - Navigation
 

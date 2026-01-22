@@ -9,6 +9,7 @@
 
 #import "XCAlbumSimpleData.h"
 #import "XC-YYAlbumData.h"
+#import "XC-YYSongData.h"
 
 #import <AFNetworking/AFNetworking.h>
 #import <UICKeyChainStore/UICKeyChainStore.h> // 将token保存在本地里，并加密保存
@@ -250,7 +251,8 @@ static XCNetworkManager *instance = nil;
 // https://1390963969-2g6ivueiij.ap-guangzhou.tencentscf.com
 // 妈生网易云，真他妈难用
 // 4个参数，可以自定义偏移量和请求数据多少
-- (void)getDataOfAllAlbumsFromWY:(NSMutableArray *)array offset:(NSInteger)offset limit:(NSInteger)limit withCompletion:(void(^)(BOOL success))completion {
+#pragma mark - 播放列表和专辑部分内容
+- (void)getDataOfPlaylistsFromWY:(NSMutableArray *)array offset:(NSInteger)offset limit:(NSInteger)limit withCompletion:(void(^)(BOOL success))completion {
     NSString *baseUrl = @"https://1390963969-2g6ivueiij.ap-guangzhou.tencentscf.com";
     NSString *requestUrl = [NSString stringWithFormat:@"%@/top/playlist", baseUrl];
 
@@ -287,4 +289,38 @@ static XCNetworkManager *instance = nil;
         if (completion) completion(NO);
     }];
 }
+- (void)getAlbumsFromWY:(NSMutableArray *)array offset:(NSInteger)offset limit:(NSInteger)limit withCompletion:(void(^)(BOOL success))completion {
+    NSString *baseUrl = @"https://1390963969-2g6ivueiij.ap-guangzhou.tencentscf.com";
+    NSString *requestUrl = [NSString stringWithFormat:@"%@/album/list", baseUrl];
+
+    NSDictionary *params = @{
+        @"limit" : @(limit),
+        @"offset" : @(offset)
+    };
+  AFHTTPSessionManager* manager = [AFHTTPSessionManager manager];
+  manager.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@"application/json", @"text/json", @"text/javascript", @"text/html", @"text/plain", nil];
+  [manager GET:requestUrl
+    parameters:params
+       headers:nil
+      progress:nil
+       success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+    if (![responseObject isKindOfClass:[NSDictionary class]]) {
+      completion(NO);
+      return;
+    }
+    NSArray* playlistsJSON = responseObject[@"products"];
+    if (playlistsJSON) {
+      NSArray<XC_YYAlbumData *> *newAlbums = [NSArray yy_modelArrayWithClass:[XC_YYAlbumData class] json:playlistsJSON];
+      [array removeAllObjects];
+      [array addObjectsFromArray:newAlbums];
+      if (completion) completion(YES);
+    } else {
+        if (completion) completion(NO);
+    }
+  } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+    NSLog(@"请求失败： %@", error);
+    if (completion) completion(NO);
+  }];
+}
+
 @end

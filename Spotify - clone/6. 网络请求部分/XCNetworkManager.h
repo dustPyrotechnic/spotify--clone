@@ -20,7 +20,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)getTokenWithCompletion:(void(^)(BOOL success))completion;
 - (void) getDataOfAllAlbums:(NSMutableArray*) array ;
 /// 使用网易云的API来请求数据（支持分页）
-- (void)getDataOfAllAlbumsFromWY:(NSMutableArray *)array offset:(NSInteger)offset limit:(NSInteger)limit withCompletion:(void(^)(BOOL success))completion;
+- (void)getDataOfPlaylistsFromWY:(NSMutableArray *)array offset:(NSInteger)offset limit:(NSInteger)limit withCompletion:(void(^)(BOOL success))completion;
+- (void)getAlbumsFromWY:(NSMutableArray *)array offset:(NSInteger)offset limit:(NSInteger)limit withCompletion:(void(^)(BOOL success))completion;
 @end
 
 NS_ASSUME_NONNULL_END

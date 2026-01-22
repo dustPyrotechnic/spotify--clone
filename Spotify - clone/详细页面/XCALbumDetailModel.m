@@ -8,5 +8,9 @@
 #import "XCALbumDetailModel.h"
 
 @implementation XCALbumDetailModel
-
+- (instancetype) init {
+  self.mainImaUrl = [[NSString alloc] init];
+  self.playerList = [[NSMutableArray alloc] init];
+  return self;
+}
 @end

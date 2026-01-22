@@ -10,8 +10,10 @@
 @implementation XC_YYAlbumData
 + (nullable NSDictionary<NSString *, id> *)modelCustomPropertyMapper {
   return @{
-    @"albumId":@"id",
-    @"authorName":@"creator.nickname",
+    @"name": @[@"name", @"albumName"],
+    @"coverImgUrl" : @[@"coverImgUrl", @"coverUrl"],
+    @"albumId":@[@"id",@"albumId"],
+    @"artistName":@[@"creator.nickname", @"artistName"],
     @"authorId":@"creator.userId"
   };
 }

@@ -246,6 +246,12 @@ static XCMusicPlayerModel *instance = nil;
 - (void)pauseMusic {
   // 完成音乐的播放操作和进度条更新
   [self.player pause];
+  // 通知音乐暂停
+}
+
+- (void)playMusic {
+  [self.player play];
+  // 通知音乐播放
 
 }
 
@@ -256,10 +262,12 @@ static XCMusicPlayerModel *instance = nil;
   MPRemoteCommandCenter *commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
   [commandCenter.playCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
     // TODO: 自己的播放操作
+
     return MPRemoteCommandHandlerStatusSuccess;
   }];
   [commandCenter.pauseCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
     // TODO: 自己的暂停操作
+
     return MPRemoteCommandHandlerStatusSuccess;
   }];
   [commandCenter.changePlaybackPositionCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {

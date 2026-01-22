@@ -16,7 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString* name;
 @property (nonatomic,copy) NSString* albumId;
 // 专辑作者数据
-@property (nonatomic, copy) NSString* authorName;
+@property (nonatomic, copy) NSString* artistName;
 @property (nonatomic, copy) NSString* authorId;
 @end
 
