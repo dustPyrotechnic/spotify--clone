@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UILabel* titleLabel;
 /// 更新日期
 @property (nonatomic, strong) UILabel* refreshDateLabel;
+
 /// 播放按钮
 @property (nonatomic, strong) UIButton* playButton;
 /// 随机按钮

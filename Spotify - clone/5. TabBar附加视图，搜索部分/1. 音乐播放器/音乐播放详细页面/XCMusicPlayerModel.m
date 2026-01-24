@@ -7,6 +7,8 @@
 
 #import "XCMusicPlayerModel.h"
 
+#import "XCNetworkManager.h"
+
 #import <UICKeyChainStore/UICKeyChainStore.h>
 #import <AFNetworking/AFNetworking.h>
 #import <AVFoundation/AVFoundation.h>
@@ -254,6 +256,30 @@ static XCMusicPlayerModel *instance = nil;
   // 通知音乐播放
 
 }
+// 根据指定id，播放音乐
+- (void)playMusicWithId:(NSString *)songId {
+    if (!songId.length) return;
+    XCNetworkManager *networkManager = [XCNetworkManager sharedInstance];
+    [networkManager findUrlOfSongWithId:songId completion:^(NSURL * _Nullable songUrl) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (songUrl) {
+                AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:songUrl];
+                if (!self.player) {
+                    self.player = [AVPlayer playerWithPlayerItem:playerItem];
+                } else {
+                    [self.player replaceCurrentItemWithPlayerItem:playerItem];
+                }
+
+                [self.player play];
+                NSLog(@"[Player] Playing: %@", songId);
+            } else {
+                NSLog(@"[Player] Error: No URL for %@", songId);
+            }
+        });
+    }];
+}
+
+// 根据当前播放歌曲，自动切换到下一首歌（顺序播放）
 
 #pragma mark - 对接远程控制器
 // 与系统控制器绑定操作

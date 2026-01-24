@@ -14,7 +14,7 @@
   self = [super init];
   if (self) {
     self.backgroundColor = [UIColor systemBackgroundColor];
-    
+    /*
     // 初始化专辑封面
     self.albumImageView = [[UIImageView alloc] init];
     self.albumImageView.contentMode = UIViewContentModeScaleAspectFill;
@@ -76,6 +76,7 @@
     self.randomButton.layer.cornerRadius = 25;
     self.randomButton.clipsToBounds = YES;
     self.randomButton.tintColor = [UIColor systemGreenColor];
+    */
     // 初始化表格视图
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.backgroundColor = [UIColor clearColor];
@@ -85,11 +86,13 @@
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     
     // 添加子视图
+    /*
     [self addSubview:self.albumImageView];
     [self addSubview:self.titleLabel];
     [self addSubview:self.refreshDateLabel];
     [self addSubview:self.playButton];
     [self addSubview:self.randomButton];
+     */
     [self addSubview:self.tableView];
     
     // 设置约束
@@ -99,6 +102,7 @@
 }
 
 - (void)setupConstraints {
+  /*
   // 专辑封面约束 - 顶部中央
   [self.albumImageView mas_makeConstraints:^(MASConstraintMaker *make) {
     make.top.equalTo(self.mas_safeAreaLayoutGuideTop).offset(20);
@@ -138,15 +142,16 @@
     make.right.equalTo(self).offset(-20);
     make.height.mas_equalTo(50);
   }];
-  
+  */
   // 表格视图约束 - 按钮下方，占据剩余空间
   [self.tableView mas_makeConstraints:^(MASConstraintMaker *make) {
-    make.top.equalTo(self.playButton.mas_bottom).offset(20);
+    make.top.equalTo(self);
     make.left.equalTo(self);
     make.right.equalTo(self);
     make.bottom.equalTo(self);
+
   }];
-  [self testView];
+//  [self testView];
   
 }
 /*

@@ -13,6 +13,8 @@
 #import "HomePageViewCollectionViewCell.h"
 #import "XCNetworkManager.h"
 
+#import "XCALbumDetailViewController.h"
+
 #import "XCMusicPlayerAccessoryView.h"
 @interface HomePageViewController ()
 @end
@@ -230,6 +232,21 @@
 
 - (void) collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
   NSLog(@"[主页控制器]：点击了标签%ld的collectionView的第%ld个",collectionView.tag,(long)indexPath.row);
+  // 点击之后，先去找这个专辑所有的数据，先进行一个网络请求，请求到歌曲的所有名字
+  //  取出cell内存储的id信息
+  HomePageViewCollectionViewCell* cell = [collectionView cellForItemAtIndexPath:indexPath];
+  NSString* albumId = cell.data.albumId;
+  NSString* imageURL = cell.data.coverImgUrl;
+  XCALbumDetailViewController* detailViewController = [[XCALbumDetailViewController alloc] init];
+  // 获取数据
+  detailViewController.model.mainImaUrl = imageURL;
+  detailViewController.model.playerlistName = cell.titleLable.text;
+  [[XCNetworkManager sharedInstance] getDetailOfAlbumFromWY:detailViewController.model.playerList ofAlbumId:albumId withCompletion:^(BOOL success) {
+    // 弹出这个页面
+    [self.navigationController pushViewController:detailViewController animated:YES];
+  }];
+  NSLog(@"[主页控制器]：弹出详细视图");
+
 }
 
 - (void) collectionView:(UICollectionView *)collectionView prefetchItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
