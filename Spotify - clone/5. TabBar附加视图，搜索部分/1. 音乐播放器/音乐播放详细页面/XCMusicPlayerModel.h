@@ -18,7 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) AVPlayer *player;
 /// 播放列表
 @property (nonatomic, strong) NSMutableArray<XC_YYSongData*>* playerlist;
-// 当前正在播放的歌
+/// 当前正在播放的歌
 @property (nonatomic, strong) XC_YYSongData* nowPlayingSong;
 
 + (instancetype)sharedInstance;

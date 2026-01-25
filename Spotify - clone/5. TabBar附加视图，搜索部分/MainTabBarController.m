@@ -74,7 +74,7 @@
       //TODO: 完成点击搜索框的变形机制
       return navigationVC;
     }];
-    searchTab.automaticallyActivatesSearch = YES;
+    searchTab.automaticallyActivatesSearch = NO;
     
 
 

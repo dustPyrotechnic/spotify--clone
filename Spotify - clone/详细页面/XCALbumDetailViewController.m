@@ -121,6 +121,7 @@
   NSLog(@"点击歌曲为%@，id信息为%@",self.model.playerList[indexPath.row - 1].name, self.model.playerList[indexPath.row - 1 ].songId);
   [[XCMusicPlayerModel sharedInstance]playMusicWithId:self.model.playerList[indexPath.row - 1].songId];
   // 传入播放列表
+  [XCMusicPlayerModel sharedInstance].playerlist = self.model.playerList;
 
 }
 

@@ -41,6 +41,24 @@ static XCMusicPlayerModel *instance = nil;
 - (id)mutableCopyWithZone:(NSZone *)zone {
   return self;
 }
+
+- (instancetype) init {
+  self = [super init];
+  NSError *error = nil;
+  AVAudioSession *session = [AVAudioSession sharedInstance];
+
+  [session setCategory:AVAudioSessionCategoryPlayback error:&error];
+  if (error) NSLog(@"[Player] Category Error: %@", error.localizedDescription);
+
+  [session setActive:YES error:&error];
+  if (error) NSLog(@"[Player] Active Error: %@", error.localizedDescription);
+
+  [self setupRemoteCommands];
+  [self setupRemoteCommands];
+  [self updateLockScreenInfo];
+  return self;
+
+}
 #pragma mark - 音乐测试播放部分代码
 - (void)testPlaySpotifySong {
     // 1. 使用搜索查询 (Ed Sheeran - Shape of You)
@@ -244,6 +262,17 @@ static XCMusicPlayerModel *instance = nil;
     }];
 }
 
+// 监听回调
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+    if ([keyPath isEqualToString:@"status"]) {
+        if (self.player.currentItem.status == AVPlayerItemStatusFailed) {
+            // 这行日志能告诉你底层到底是由于权限、网络还是解码失败
+            NSLog(@"[Player] 播放失败详细原因: %@", self.player.currentItem.error.localizedDescription);
+            NSLog(@"[Player] 错误代码: %ld", (long)self.player.currentItem.error.code);
+        }
+    }
+}
+
 #pragma mark - 音乐播放代码
 - (void)pauseMusic {
   // 完成音乐的播放操作和进度条更新
@@ -263,11 +292,14 @@ static XCMusicPlayerModel *instance = nil;
     [networkManager findUrlOfSongWithId:songId completion:^(NSURL * _Nullable songUrl) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (songUrl) {
+              NSLog(@"%@",songUrl);
                 AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:songUrl];
                 if (!self.player) {
                     self.player = [AVPlayer playerWithPlayerItem:playerItem];
+//                  [self.player.currentItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:nil];
                 } else {
                     [self.player replaceCurrentItemWithPlayerItem:playerItem];
+//                  [self.player.currentItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:nil];
                 }
 
                 [self.player play];
@@ -280,20 +312,28 @@ static XCMusicPlayerModel *instance = nil;
 }
 
 // 根据当前播放歌曲，自动切换到下一首歌（顺序播放）
-
+- (void)playNextSong {
+  // 我们应该先根据当前歌曲换找到目前播放是第几个
+  // 然后换到下一个
+  NSInteger num = [self.playerlist indexOfObject:self.nowPlayingSong];
+  if (num < self.playerlist.count)  {
+    self.nowPlayingSong = self.playerlist[num];
+  } else {
+    self.nowPlayingSong = self.playerlist[0];
+  }
+  [self playMusicWithId:self.nowPlayingSong.songId];
+}
 #pragma mark - 对接远程控制器
 // 与系统控制器绑定操作
 - (void)setupRemoteCommands {
   // 获取全局的远程命令中心
   MPRemoteCommandCenter *commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
   [commandCenter.playCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
-    // TODO: 自己的播放操作
-
+    [self playMusic];
     return MPRemoteCommandHandlerStatusSuccess;
   }];
   [commandCenter.pauseCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
-    // TODO: 自己的暂停操作
-
+    [self pauseMusic];
     return MPRemoteCommandHandlerStatusSuccess;
   }];
   [commandCenter.changePlaybackPositionCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
