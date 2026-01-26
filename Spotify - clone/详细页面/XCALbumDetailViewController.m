@@ -33,7 +33,7 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
   self.view.backgroundColor = [UIColor systemBackgroundColor];
-  
+
   self.mainView = [[XCALbumDetailView alloc] init];
   //设置封面图
 //  NSURL* url = [NSURL URLWithString:self.model.mainImaUrl];
@@ -41,7 +41,7 @@
 
 
   [self.view addSubview:self.mainView];
-  
+
   // 设置 tableView 代理和数据源
   self.mainView.tableView.delegate = self;
   self.mainView.tableView.dataSource = self;
@@ -119,6 +119,8 @@
   }
   [tableView deselectRowAtIndexPath:indexPath animated:YES];
   NSLog(@"点击歌曲为%@，id信息为%@",self.model.playerList[indexPath.row - 1].name, self.model.playerList[indexPath.row - 1 ].songId);
+  [XCMusicPlayerModel sharedInstance].nowPlayingSong = self.model.playerList[indexPath.row - 1];
+
   [[XCMusicPlayerModel sharedInstance]playMusicWithId:self.model.playerList[indexPath.row - 1].songId];
   // 传入播放列表
   [XCMusicPlayerModel sharedInstance].playerlist = self.model.playerList;
