@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "85630661BDB114A5B5AA41E317CE195C"
-               BuildableName = "libPods-Spotify - clone.a"
+               BuildableName = "Pods_Spotify___clone.framework"
                BlueprintName = "Pods-Spotify - clone"
                ReferencedContainer = "container:Pods.xcodeproj">
             </BuildableReference>

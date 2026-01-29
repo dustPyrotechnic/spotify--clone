@@ -1,18 +1,31 @@
-# Uncomment the next line to define a global platform for your project
-# 建议将版本号至少提升到 11.0 或更高，因为现在的库可能不再支持 iOS 9.0
-# platform :ios, '11.0'
+# 1. 直接指定为 iOS 26.0 (匹配你的新系统环境)
+#platform :ios, '26.0'
 
 target 'Spotify - clone' do
-  # Comment the next line if you don't want to use dynamic frameworks
-  # use_frameworks!
+  use_frameworks!
 
   pod 'LookinServer'
-  pod 'AFNetworking' 
-  pod 'Masonry'      
-  pod 'SDWebImage'   # 第1项：用于网络图片加载
-  pod 'YYModel'      
-  pod 'WCDB.objc'    
+  pod 'AFNetworking'
+  pod 'Masonry'
+  pod 'SDWebImage'
+  pod 'YYModel'
+  
+  # 数据库
+  pod 'WCDB.objc', :git => 'https://github.com/Tencent/wcdb.git', :tag => 'v2.1.15'
+  
   pod 'UICKeyChainStore'
   pod 'ChameleonFramework'
+end
 
+# 2. 【核心修复】这段脚本专门用来救活 Masonry 等老库
+# 它会强制把所有第三方库的最低支持版本改为 26.0
+post_install do |installer|
+  installer.generated_projects.each do |project|
+    project.targets.each do |target|
+      target.build_configurations.each do |config|
+        # 强制覆盖 Deployment Target 为 26.0，解决 libarclite 报错
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '26.0'
+      end
+    end
+  end
 end

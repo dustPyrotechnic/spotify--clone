@@ -37,7 +37,7 @@ DEPENDENCIES:
   - Masonry
   - SDWebImage
   - UICKeyChainStore
-  - WCDB.objc
+  - WCDB.objc (from `https://github.com/Tencent/wcdb.git`, tag `v2.1.15`)
   - YYModel
 
 SPEC REPOS:
@@ -48,9 +48,18 @@ SPEC REPOS:
     - Masonry
     - SDWebImage
     - UICKeyChainStore
-    - WCDB.objc
     - WCDBOptimizedSQLCipher
     - YYModel
+
+EXTERNAL SOURCES:
+  WCDB.objc:
+    :git: https://github.com/Tencent/wcdb.git
+    :tag: v2.1.15
+
+CHECKOUT OPTIONS:
+  WCDB.objc:
+    :git: https://github.com/Tencent/wcdb.git
+    :tag: v2.1.15
 
 SPEC CHECKSUMS:
   AFNetworking: 3bd23d814e976cd148d7d44c3ab78017b744cd58
@@ -63,6 +72,6 @@ SPEC CHECKSUMS:
   WCDBOptimizedSQLCipher: 871994f7f620302fdf87a2729c099a1efa2223da
   YYModel: 2a7fdd96aaa4b86a824e26d0c517de8928c04b30
 
-PODFILE CHECKSUM: eec5ab8142f8c61a6e42233336265b6fc408c099
+PODFILE CHECKSUM: cc272ac7b08464853528d13ede4266569ca08eda
 
 COCOAPODS: 1.16.2

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import WCDBSwift
 
 struct XCPersonalPlayerListView: View {
     var body: some View {
