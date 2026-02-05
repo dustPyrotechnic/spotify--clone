@@ -11,7 +11,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface XCResourceLoaderManager : NSObject <AVAssetResourceLoaderDelegate>
-- (instancetype)shareInstance;
++ (instancetype)sharedInstance;
 @end
 
 NS_ASSUME_NONNULL_END

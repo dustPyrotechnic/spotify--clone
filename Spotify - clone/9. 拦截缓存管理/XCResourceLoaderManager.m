@@ -39,7 +39,7 @@ static XCResourceLoaderManager *instance = nil;
 }
 
 - (void)resourceLoader:(AVAssetResourceLoader *)resourceLoader didCancelLoadingRequest:(AVAssetResourceLoadingRequest *)loadingRequest {
-
+  NSLog(@"请求被取消,url为： %@", loadingRequest.request.URL);
 }
 
 @end

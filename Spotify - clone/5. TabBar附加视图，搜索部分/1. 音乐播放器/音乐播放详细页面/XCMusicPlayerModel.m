@@ -8,6 +8,7 @@
 #import "XCMusicPlayerModel.h"
 
 #import "XCNetworkManager.h"
+#import "XCResourceLoaderManager.h"
 
 #import <UICKeyChainStore/UICKeyChainStore.h>
 #import <AFNetworking/AFNetworking.h>
@@ -292,18 +293,25 @@ static XCMusicPlayerModel *instance = nil;
         dispatch_async(dispatch_get_main_queue(), ^{
             if (songUrl) {
               NSLog(@"%@",songUrl);
-                AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:songUrl];
-                if (!self.player) {
-                    self.player = [AVPlayer playerWithPlayerItem:playerItem];
-                } else {
-                    [self.player replaceCurrentItemWithPlayerItem:playerItem];
-                }
-                [self.player play];
-                NSLog(@"[Player] Playing: %@", songId);
-                [self updateLockScreenInfo];
+              // 对URL进行一个处理
+              NSURL* url = [self customURLFromOriginalURL:songUrl];
+              AVURLAsset* asset = [AVURLAsset URLAssetWithURL:url options:nil];
+              [asset.resourceLoader setDelegate:[XCResourceLoaderManager sharedInstance]
+                                          queue:dispatch_get_main_queue()];// 必须是串行队列
+              AVPlayerItem *player = [AVPlayerItem playerItemWithAsset:asset];
+              AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:url];
+              if (!self.player) {
+                self.player = [AVPlayer playerWithPlayerItem:player];
+              } else {
+                [self.player replaceCurrentItemWithPlayerItem:playerItem];
+              }
+              [self.player play];
+              NSLog(@"[Player] Playing: %@", songId);
+              [self updateLockScreenInfo];
             } else {
-                NSLog(@"[Player] Error: No URL for %@", songId);
+              NSLog(@"[Player] Error: No URL for %@", songId);
             }
+
         });
     }];
 }
@@ -396,7 +404,12 @@ static XCMusicPlayerModel *instance = nil;
 
     [infoCenter setNowPlayingInfo:dict];
 }
-#pragma mark - 音乐的数据增删查改
+#pragma mark - 缓存相关内容
+- (NSURL *)customURLFromOriginalURL:(NSURL *)originalURL {
+    NSURLComponents *components = [NSURLComponents componentsWithURL:originalURL resolvingAgainstBaseURL:NO];
+    components.scheme = @"pyrotechnic";
+    return components.URL;
+}
 // TODO: 完成从沙盒里取数据和放数据和查数据
 
 
