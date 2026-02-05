@@ -352,17 +352,13 @@ static XCMusicPlayerModel *instance = nil;
 
 // 每次切换的时候更新信息
 - (void)updateLockScreenInfo {
-    // 1. 获取中心
     MPNowPlayingInfoCenter *infoCenter = [MPNowPlayingInfoCenter defaultCenter];
     NSMutableDictionary *dict = [NSMutableDictionary dictionary];
 
-    // 2. 防崩溃设置基本信息 (使用 ?: 语法糖，如果为空则设为空串，防止崩溃)
     [dict setObject:(self.nowPlayingSong.name ?: @"未知标题") forKey:MPMediaItemPropertyTitle];
     [dict setObject:@"测试歌手 - Ed Sheeran" forKey:MPMediaItemPropertyArtist]; // 建议换成 self.nowPlayingSong.artist
     [dict setObject:@"测试专辑 - Divide" forKey:MPMediaItemPropertyAlbumTitle];
 
-    // 3. 图片处理逻辑升级
-    // 假设 mainIma 是字符串 URL
     NSURL *url = [NSURL URLWithString:self.nowPlayingSong.mainIma];
 
     // 尝试先找占位图
@@ -376,8 +372,7 @@ static XCMusicPlayerModel *instance = nil;
         if (cachedImage) {
             artworkImage = cachedImage;
         } else {
-            // 注意：如果缓存没有，这里需要触发下载，下载完后再调一次 updateLockScreenInfo
-            // 可以在你的数据模型或者 PlayerManager 里监听图片下载完成的通知
+
         }
     }
 
@@ -395,11 +390,10 @@ static XCMusicPlayerModel *instance = nil;
     [dict setObject:@(200.0) forKey:MPMediaItemPropertyPlaybackDuration];
     [dict setObject:@(50.0) forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
 
-    // ⚠️ 如果暂停了，Rate 必须设为 0.0，否则锁屏进度条会一直走
+    // 如果暂停了，Rate 必须设为 0.0，否则锁屏进度条会一直走
     // [dict setObject:@(self.player.rate) forKey:MPNowPlayingInfoPropertyPlaybackRate];
     [dict setObject:@(1.0) forKey:MPNowPlayingInfoPropertyPlaybackRate];
 
-    // 5. 提交
     [infoCenter setNowPlayingInfo:dict];
 }
 #pragma mark - 音乐的数据增删查改
@@ -407,3 +401,4 @@ static XCMusicPlayerModel *instance = nil;
 
 
 @end
+

@@ -14,6 +14,7 @@
 
 // 引入四个页面部分内容
 #import "HomePageViewController.h"
+#import "XCPersonalViewController.h"
 
 
 
@@ -48,7 +49,7 @@
                                              image:[UIImage systemImageNamed:@"music.pages"]
                                         identifier:@"MusicWarehouse"
                             viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
-        UIViewController *musicWarehousePageController = [[UIViewController alloc] init];
+      XCPersonalViewController *musicWarehousePageController = [[XCPersonalViewController alloc] init];
         return [[UINavigationController alloc] initWithRootViewController:musicWarehousePageController];
     }];
 
