@@ -27,8 +27,19 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)testPlaySpotifySong;
 - (void)testPlaySpotifySong2;
 - (void)testPlayAppleMusicSong;
-/// 根据id信息直接播放歌曲内容
+
+#pragma mark - 播放控制
+/// 根据id信息直接播放歌曲内容（带内存缓存）
 - (void)playMusicWithId:(NSString *)songId;
+/// 播放下一首
+- (void)playNextSong;
+/// 播放上一首
+- (void)playPreviousSong;
+/// 暂停播放
+- (void)pauseMusic;
+/// 继续播放
+- (void)playMusic;
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -105,6 +105,9 @@ Spotify - clone/
 ├── 9. 拦截缓存管理/              # 资源缓存
 │   └── XCResourceLoaderManager.h/m
 │
+├── 10. 内存缓存/                 # ⭐️ 新增：音乐内存缓存
+│   ├── XCMusicMemoryCache.h/m
+│
 ├── 数据结构/                     # 数据模型
 │   ├── XC-YYAlbumData.h/m       # 专辑数据模型
 │   └── XC-YYSongData.h/m        # 歌曲数据模型
@@ -133,6 +136,7 @@ Spotify - clone/
 - `XCNetworkManager` - 网络请求管理
 - `XCMusicPlayerModel` - 音乐播放器管理
 - `XCResourceLoaderManager` - 资源加载管理
+- `XCMusicMemoryCache` - 音乐内存缓存 ⭐️ 新增
 
 ---
 
@@ -228,7 +232,15 @@ open "Spotify - clone.xcworkspace"
 - 播放列表管理
 - 当前播放歌曲追踪
 
-### 3. MainTabBarController
+### 3. XCMusicMemoryCache ⭐️ 新增
+音乐内存缓存：
+- 使用 `NSCache` 自动管理内存
+- 最大 10 首歌曲 / 100MB
+- 支持后台异步下载
+- 秒切歌无卡顿
+- **注意**：App 重启后缓存清空（纯内存）
+
+### 4. MainTabBarController
 主 TabBar 控制器，包含 5 个 Tab：
 1. Home - 首页
 2. Music Warehouse - 音乐库
@@ -274,10 +286,23 @@ NSString *clientSecret = @"8e3f5...";  // 建议移到安全存储
 1. 搜索框变形机制未完成 (`MainTabBarController.m:76`)
 2. 图片下载多线程预取 (`HomePageViewController.m:253`)
 3. 音乐库、新发现、广播部分尚未实现 (空视图控制器)
+4. ✅ 内存缓存已集成到 `XCMusicPlayerModel` 中（2026-02-07）
 
 ### 注意事项
 - 网易云 API 可能不稳定（项目注释："妈生网易云，真他妈难用"）
 - 某些歌曲 URL 可能为空（版权/付费限制）
+
+---
+
+## Documentation
+
+项目文档统一存放在 `docs/` 目录：
+
+| 文档 | 说明 |
+|------|------|
+| `docs/AGENTS.md` | 本文件，项目整体说明 |
+| `docs/MUSIC_CACHE_SIMPLE.md` | 内存缓存设计方案（简化版） |
+| `docs/MUSIC_CACHE_INTEGRATION.md` | 内存缓存集成指南 |
 
 ---
 

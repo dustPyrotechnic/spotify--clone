@@ -6,6 +6,10 @@
 //
 
 #import "XC-YYSongData.h"
+#import "WCDBObjc.h"
+
+@interface XC_YYSongData () <WCTTableCoding>
+@end
 
 @implementation XC_YYSongData
 - (instancetype) init {

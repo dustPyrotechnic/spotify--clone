@@ -25,6 +25,18 @@ post_install do |installer|
       target.build_configurations.each do |config|
         # 强制覆盖 Deployment Target 为 26.0，解决 libarclite 报错
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '26.0'
+        
+        # Xcode 26 C++ 标准库修复
+        config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'gnu++17'
+        
+        # 添加 C++ 库搜索路径
+        config.build_settings['LIBRARY_SEARCH_PATHS'] ||= ['$(inherited)']
+        config.build_settings['LIBRARY_SEARCH_PATHS'] << '$(SDKROOT)/usr/lib'
+        
+        # 修复 WCDB C++ 头文件找不到问题
+        config.build_settings['HEADER_SEARCH_PATHS'] ||= ['$(inherited)']
+        config.build_settings['HEADER_SEARCH_PATHS'] << '$(SDKROOT)/usr/include/c++/v1'
       end
     end
   end

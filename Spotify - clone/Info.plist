@@ -26,14 +26,18 @@
 				<key>NSIncludesSubdomains</key>
 				<true/>
 			</dict>
-			<key>p1.music.126.net</key>
+			<key>music.126.net</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
 			</dict>
-			<key>p2.music.126.net</key>
+			<key>126.net</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
 				<true/>
 			</dict>
 		</dict>
