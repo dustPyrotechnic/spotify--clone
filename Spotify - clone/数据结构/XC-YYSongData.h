@@ -7,11 +7,13 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import "YYModel/YYModel.h"
+#import <YYModel/YYModel.h>
+#import <WCDBObjc/WCDBObjc.h>
+
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface XC_YYSongData : NSObject <YYModel>
+@interface XC_YYSongData : NSObject <YYModel, WCTTableCoding>
 /// 歌曲的名字
 @property (nonatomic, strong) NSString* name;
 /// 歌曲的封面
@@ -20,6 +22,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSString* songId;
 /// 播放歌曲的URL，网络或者本地
 @property (nonatomic, strong) NSString* songUrl;
+
+/// 缓存用属性
+///
 
 
 @end

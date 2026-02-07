@@ -24,27 +24,22 @@ static XCMusicPlayerModel *instance = nil;
 + (void)load {
   instance = [[super allocWithZone:NULL] init];
 }
-
 // 饿汉模式的全局访问点
 + (instancetype)sharedInstance {
   return instance;
 }
-
 // 重写 allocWithZone: 方法，确保无法通过 alloc 直接创建新实例
 + (instancetype)allocWithZone:(struct _NSZone *)zone {
   // 直接返回已经创建好的单例实例
   return [self sharedInstance];
 }
-
 // 重写 copy 和 mutableCopy 方法，防止实例被复制
 - (id)copyWithZone:(NSZone *)zone {
   return self;
 }
-
 - (id)mutableCopyWithZone:(NSZone *)zone {
   return self;
 }
-
 - (instancetype) init {
   self = [super init];
   [self signUpAVAudioSession];
@@ -299,9 +294,9 @@ static XCMusicPlayerModel *instance = nil;
               [asset.resourceLoader setDelegate:[XCResourceLoaderManager sharedInstance]
                                           queue:dispatch_get_main_queue()];// 必须是串行队列
               AVPlayerItem *player = [AVPlayerItem playerItemWithAsset:asset];
-              AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:url];
+              AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:songUrl];
               if (!self.player) {
-                self.player = [AVPlayer playerWithPlayerItem:player];
+                self.player = [AVPlayer playerWithPlayerItem:playerItem]; // 改这个来实现播放
               } else {
                 [self.player replaceCurrentItemWithPlayerItem:playerItem];
               }
