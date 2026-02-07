@@ -18,6 +18,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSString* songId;
 /// 显示作者名字
 @property (nonatomic, strong) UILabel* authorLabel;
+/// 显示歌曲时长
+@property (nonatomic, strong) UILabel* durationLabel;
 /// 显示菜单
 @property (nonatomic, strong) UIButton* menuButton;
 @end

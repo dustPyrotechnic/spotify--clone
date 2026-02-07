@@ -103,7 +103,8 @@
   }];
   cell.songId = song.songId;
   cell.songLabel.text = song.name;
-  cell.authorLabel.text = @"赵本山";
+  cell.authorLabel.text = song.artist;
+  cell.durationLabel.text = song.durationText;
 }
 - (CGFloat) tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
   if (indexPath.row == 0) {

@@ -482,8 +482,8 @@ static XCMusicPlayerModel *instance = nil;
     NSMutableDictionary *dict = [NSMutableDictionary dictionary];
 
     [dict setObject:(self.nowPlayingSong.name ?: @"未知标题") forKey:MPMediaItemPropertyTitle];
-    [dict setObject:@"测试歌手 - Ed Sheeran" forKey:MPMediaItemPropertyArtist]; // 建议换成 self.nowPlayingSong.artist
-    [dict setObject:@"测试专辑 - Divide" forKey:MPMediaItemPropertyAlbumTitle];
+    [dict setObject:(self.nowPlayingSong.artist ?: @"未知艺术家") forKey:MPMediaItemPropertyArtist];
+    [dict setObject:(self.nowPlayingSong.albumName ?: @"未知专辑") forKey:MPMediaItemPropertyAlbumTitle];
 
     NSURL *url = [NSURL URLWithString:self.nowPlayingSong.mainIma];
 
@@ -514,7 +514,13 @@ static XCMusicPlayerModel *instance = nil;
     // float totalSeconds = CMTimeGetSeconds(duration);
     // float currentSeconds = CMTimeGetSeconds(self.player.currentTime);
 
-    [dict setObject:@(200.0) forKey:MPMediaItemPropertyPlaybackDuration];
+    // 使用歌曲实际时长（转换为秒）
+    NSInteger durationSeconds = self.nowPlayingSong.duration / 1000;
+    if (durationSeconds > 0) {
+        [dict setObject:@(durationSeconds) forKey:MPMediaItemPropertyPlaybackDuration];
+    } else {
+        [dict setObject:@(200.0) forKey:MPMediaItemPropertyPlaybackDuration];
+    }
     [dict setObject:@(50.0) forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
 
     // 如果暂停了，Rate 必须设为 0.0，否则锁屏进度条会一直走

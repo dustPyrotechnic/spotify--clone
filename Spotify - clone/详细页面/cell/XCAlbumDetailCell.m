@@ -39,6 +39,12 @@
   self.authorLabel.textColor = [UIColor secondaryLabelColor];
   self.authorLabel.numberOfLines = 1;
   
+  self.durationLabel = [[UILabel alloc] init];
+  self.durationLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightRegular];
+  self.durationLabel.textColor = [UIColor tertiaryLabelColor];
+  self.durationLabel.numberOfLines = 1;
+  self.durationLabel.textAlignment = NSTextAlignmentRight;
+  
   self.menuButton = [UIButton buttonWithType:UIButtonTypeSystem];
   UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightRegular];
   UIImage *menuImage = [UIImage systemImageNamed:@"ellipsis" withConfiguration:symbolConfig];
@@ -50,6 +56,7 @@
   [self.contentView addSubview:self.mainImageView];
   [self.contentView addSubview:self.songLabel];
   [self.contentView addSubview:self.authorLabel];
+//  [self.contentView addSubview:self.durationLabel];
   [self.contentView addSubview:self.menuButton];
   [self setupConstraints];
 }
@@ -85,6 +92,15 @@
     make.right.lessThanOrEqualTo(self.menuButton.mas_left).offset(-12);
     make.bottom.lessThanOrEqualTo(self.contentView).offset(-12);
   }];
+  
+  // 时长标签（右侧，菜单按钮左边）
+  /*
+  [self.durationLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+    make.centerY.equalTo(self.contentView);
+    make.right.equalTo(self.menuButton.mas_left).offset(-8);
+    make.width.mas_greaterThanOrEqualTo(30);
+  }];
+   */
 }
 
 
