@@ -9,14 +9,18 @@
 
 #import <Masonry/Masonry.h>
 #import <ChameleonFramework/Chameleon.h>
+#import <SDWebImage/SDWebImage.h>
 
 @implementation XCMusicPlayerView
 #pragma mark - 初始化视图内容
 - (instancetype) init {
+  NSLog(@"[MusicPlayerView] init 开始");
   self = [super init];
   if (self) {
+    NSLog(@"[MusicPlayerView] 初始化子视图");
     // 测试
     self.image = [UIImage imageNamed:@"testImage.jpg"];
+    NSLog(@"[MusicPlayerView] 测试图片: %@", self.image);
 
 
     // 设置背景色
@@ -141,16 +145,49 @@
     self.scaleTransform = CGAffineTransformMakeScale(1.3, 1.3);
 
 //    [self letAlbumImageBig];
+    NSLog(@"[MusicPlayerView] init 完成");
   }
   return self;
 }
 - (void) layoutSubviews {
-
-  UIColor* aveColor = [UIColor colorWithAverageColorFromImage:self.image];
-  UIColor *gradientColor = [UIColor colorWithGradientStyle:UIGradientStyleTopToBottom
+    NSLog(@"[MusicPlayerView] layoutSubviews 被调用");
+    
+    [super layoutSubviews];
+    
+    NSLog(@"[MusicPlayerView] self.bounds = %@", NSStringFromCGRect(self.bounds));
+    
+    // 检查 bounds 是否有效（宽高必须大于0）
+    if (CGRectIsEmpty(self.bounds) || self.bounds.size.width == 0 || self.bounds.size.height == 0) {
+        NSLog(@"[MusicPlayerView] ⚠️ bounds 无效，跳过背景更新");
+        return;
+    }
+    
+    // 优先使用 albumImage.image，如果没有则使用 self.image
+    UIImage *imageToUse = self.albumImage.image ?: self.image;
+    NSLog(@"[MusicPlayerView] 使用的图片: %@", imageToUse);
+    
+    if (!imageToUse) {
+        NSLog(@"[MusicPlayerView] ⚠️ 没有可用图片，跳过背景设置");
+        return;
+    }
+    
+    NSLog(@"[MusicPlayerView] 开始计算图片平均颜色");
+    UIColor* aveColor = [UIColor colorWithAverageColorFromImage:imageToUse];
+    NSLog(@"[MusicPlayerView] 平均颜色: %@", aveColor);
+    
+    if (!aveColor) {
+        NSLog(@"[MusicPlayerView] ⚠️ 无法获取平均颜色");
+        return;
+    }
+    
+    NSLog(@"[MusicPlayerView] 开始创建渐变色");
+    UIColor *gradientColor = [UIColor colorWithGradientStyle:UIGradientStyleTopToBottom
                                                      withFrame:self.bounds
                                                      andColors:@[[aveColor darkenByPercentage:0.2],[aveColor darkenByPercentage:0.05], [aveColor darkenByPercentage:0.3]]];
-  self.backgroundColor = gradientColor;
+    NSLog(@"[MusicPlayerView] 渐变色: %@", gradientColor);
+    
+    self.backgroundColor = gradientColor;
+    NSLog(@"[MusicPlayerView] layoutSubviews 完成");
 }
 - (void)setupConstraints {
   [self.containerImageView mas_makeConstraints:^(MASConstraintMaker *make) {
@@ -261,6 +298,56 @@
 //    self.containerImageView.layer.masksToBounds = YES;
   }];
 
+}
+
+#pragma mark - 配置方法
+
+- (void)configureWithSong:(XC_YYSongData *)song {
+    NSLog(@"[MusicPlayerView] configureWithSong 被调用");
+    
+    if (!song) {
+        NSLog(@"[MusicPlayerView] ⚠️ song 为空，直接返回");
+        return;
+    }
+    
+    NSLog(@"[MusicPlayerView] 歌曲信息: name=%@, artist=%@, mainIma=%@", song.name, song.artist, song.mainIma);
+    
+    // 更新歌曲名
+    self.songNameLabel.text = song.name ?: @"未知歌曲";
+    NSLog(@"[MusicPlayerView] 歌曲名已设置");
+    
+    // 更新艺术家名称
+    self.authorNameLabel.text = song.artist ?: @"未知艺术家";
+    NSLog(@"[MusicPlayerView] 艺术家已设置");
+    
+    // 使用 SDWebImage 加载专辑封面
+    if (song.mainIma) {
+        NSLog(@"[MusicPlayerView] 开始加载专辑封面: %@", song.mainIma);
+        NSURL *imageURL = [NSURL URLWithString:song.mainIma];
+        NSLog(@"[MusicPlayerView] 图片 URL: %@", imageURL);
+        
+        __weak typeof(self) weakSelf = self;
+        [self.albumImage sd_setImageWithURL:imageURL
+                           placeholderImage:[UIImage imageNamed:@"testImage.jpg"]
+                                  completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+            NSLog(@"[MusicPlayerView] 图片加载完成回调触发");
+            if (error) {
+                NSLog(@"[MusicPlayerView] ⚠️ 图片加载错误: %@", error.localizedDescription);
+            } else {
+                NSLog(@"[MusicPlayerView] 图片加载成功，标记需要刷新布局");
+            }
+            // 图片加载完成后标记需要重新布局，在 layoutSubviews 中更新背景
+            [weakSelf setNeedsLayout];
+        }];
+    }
+    // 不在这里直接调用 updateBackgroundGradient，交给 layoutSubviews 处理
+}
+
+- (void)updateBackgroundGradient {
+    NSLog(@"[MusicPlayerView] updateBackgroundGradient 被调用，触发重新布局");
+    // 标记需要重新布局，在 layoutSubviews 中更新背景
+    // 这样可以确保视图已经有有效尺寸
+    [self setNeedsLayout];
 }
 
 /*

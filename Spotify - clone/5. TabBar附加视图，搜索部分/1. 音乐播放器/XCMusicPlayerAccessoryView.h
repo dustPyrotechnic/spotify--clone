@@ -6,8 +6,9 @@
 //
 
 #import <UIKit/UIKit.h>
-#import "XCMusicPlayerViewController.h"
-#import "XCMusicPlayerModel.h"
+#import "XC-YYSongData.h"
+
+@class XCMusicPlayerViewController;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -29,6 +30,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 ///初始化这个View和照片
 - (instancetype) initWithFrame:(CGRect)frame withImage:(UIImage*)image andTitle:(NSString*)title withSonger:(NSString*)songer withCondition:(BOOL) isPlaying;
+
+#pragma mark - 更新方法
+/// 根据歌曲数据更新视图
+- (void)updateWithSong:(XC_YYSongData *)song;
+/// 更新播放状态
+- (void)updatePlayState:(BOOL)isPlaying;
 
 @end
 

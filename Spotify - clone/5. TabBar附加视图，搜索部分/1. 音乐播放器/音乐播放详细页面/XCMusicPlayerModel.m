@@ -18,6 +18,15 @@
 #import <SDWebImage/SDWebImage.h>
 #import <objc/message.h>
 
+// 通知常量定义
+NSString * const XCMusicPlayerNowPlayingSongDidChangeNotification = @"XCMusicPlayerNowPlayingSongDidChangeNotification";
+NSString * const XCMusicPlayerPlaybackStateDidChangeNotification = @"XCMusicPlayerPlaybackStateDidChangeNotification";
+
+@interface XCMusicPlayerModel ()
+/// 锁屏进度更新定时器
+@property (nonatomic, strong) NSTimer *lockScreenTimer;
+@end
+
 @implementation XCMusicPlayerModel
 #pragma mark - 单例模式代码
 static XCMusicPlayerModel *instance = nil;
@@ -53,6 +62,11 @@ static XCMusicPlayerModel *instance = nil;
     NSLog(@"[PlayerModel] 🎵 当前歌曲变更: %@ -> %@", _nowPlayingSong.name ?: @"无", nowPlayingSong.name);
     _nowPlayingSong = nowPlayingSong;
     [self updateLockScreenInfo];
+    
+    // 发送歌曲变更通知
+    [[NSNotificationCenter defaultCenter] postNotificationName:XCMusicPlayerNowPlayingSongDidChangeNotification
+                                                        object:self
+                                                      userInfo:@{@"song": nowPlayingSong ?: [NSNull null]}];
 }
 #pragma mark - 音乐测试播放部分代码
 - (void)testPlaySpotifySong {
@@ -274,11 +288,29 @@ static XCMusicPlayerModel *instance = nil;
 - (void)pauseMusic {
     NSLog(@"[PlayerModel] ⏸️ 暂停播放");
     [self.player pause];
+    _isPlaying = NO;
+    // 停止定时器，并更新一次锁屏信息以反映暂停状态
+    [self stopLockScreenProgressTimer];
+    [self updateLockScreenInfo];
+    
+    // 发送播放状态变更通知
+    [[NSNotificationCenter defaultCenter] postNotificationName:XCMusicPlayerPlaybackStateDidChangeNotification
+                                                        object:self
+                                                      userInfo:@{@"isPlaying": @NO}];
 }
 
 - (void)playMusic {
     NSLog(@"[PlayerModel] ▶️ 继续播放");
     [self.player play];
+    _isPlaying = YES;
+    // 启动定时器定期更新锁屏进度
+    [self startLockScreenProgressTimer];
+    [self updateLockScreenInfo];
+    
+    // 发送播放状态变更通知
+    [[NSNotificationCenter defaultCenter] postNotificationName:XCMusicPlayerPlaybackStateDidChangeNotification
+                                                        object:self
+                                                      userInfo:@{@"isPlaying": @YES}];
 }
 
 // 根据指定id，播放音乐
@@ -341,8 +373,11 @@ static XCMusicPlayerModel *instance = nil;
     }
     
     [self.player play];
+    _isPlaying = YES;
     NSLog(@"[PlayerModel] ▶️ 开始播放: %@", songId);
     [self updateLockScreenInfo];
+    // 启动定时器更新锁屏进度
+    [self startLockScreenProgressTimer];
 }
 
 // 在播放列表中查找歌曲
@@ -453,31 +488,31 @@ static XCMusicPlayerModel *instance = nil;
 }
 // 与系统控制器绑定操作
 - (void)setupRemoteCommands {
-    NSLog(@"[PlayerModel] 🎛️ 设置远程控制命令...");
+    NSLog(@"[PlayerModel] 设置远程控制命令...");
     // 获取全局的远程命令中心
     MPRemoteCommandCenter *commandCenter = [MPRemoteCommandCenter sharedCommandCenter];
     [commandCenter.playCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
-        NSLog(@"[PlayerModel] 🎛️ 远程命令: 播放");
+        NSLog(@"[PlayerModel] 远程命令: 播放");
         [self playMusic];
         return MPRemoteCommandHandlerStatusSuccess;
     }];
     [commandCenter.pauseCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
-        NSLog(@"[PlayerModel] 🎛️ 远程命令: 暂停");
+        NSLog(@"[PlayerModel] 远程命令: 暂停");
         [self pauseMusic];
         return MPRemoteCommandHandlerStatusSuccess;
     }];
     [commandCenter.changePlaybackPositionCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
         MPChangePlaybackPositionCommandEvent *positionEvent = (MPChangePlaybackPositionCommandEvent *)event;
-        NSLog(@"[PlayerModel] 🎛️ 远程命令: 进度调整 -> %.1fs", positionEvent.positionTime);
+        NSLog(@"[PlayerModel] 远程命令: 进度调整 -> %.1fs", positionEvent.positionTime);
         // TODO: 自己的调整播放时间的操作
         return MPRemoteCommandHandlerStatusSuccess;
     }];
-    NSLog(@"[PlayerModel] ✅ 远程控制命令设置完成");
+    NSLog(@"[PlayerModel] 远程控制命令设置完成");
 }
 
 // 每次切换的时候更新信息
 - (void)updateLockScreenInfo {
-    NSLog(@"[PlayerModel] 🔒 更新锁屏信息...");
+    NSLog(@"[PlayerModel] 更新锁屏信息...");
     MPNowPlayingInfoCenter *infoCenter = [MPNowPlayingInfoCenter defaultCenter];
     NSMutableDictionary *dict = [NSMutableDictionary dictionary];
 
@@ -521,11 +556,20 @@ static XCMusicPlayerModel *instance = nil;
     } else {
         [dict setObject:@(200.0) forKey:MPMediaItemPropertyPlaybackDuration];
     }
-    [dict setObject:@(50.0) forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
+    
+    // 使用实际的播放进度（而不是固定值50秒）
+    NSTimeInterval currentTime = 0;
+    if (self.player) {
+        currentTime = CMTimeGetSeconds(self.player.currentTime);
+        // 处理无效值（如 NaN 或负值）
+        if (isnan(currentTime) || currentTime < 0) {
+            currentTime = 0;
+        }
+    }
+    [dict setObject:@(currentTime) forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
 
-    // 如果暂停了，Rate 必须设为 0.0，否则锁屏进度条会一直走
-    // [dict setObject:@(self.player.rate) forKey:MPNowPlayingInfoPropertyPlaybackRate];
-    [dict setObject:@(1.0) forKey:MPNowPlayingInfoPropertyPlaybackRate];
+    // 根据 Model 维护的播放状态设置 rate，暂停时必须设为 0.0，否则锁屏进度条会一直走
+    [dict setObject:@(_isPlaying ? 1.0 : 0.0) forKey:MPNowPlayingInfoPropertyPlaybackRate];
 
     [infoCenter setNowPlayingInfo:dict];
     NSLog(@"[PlayerModel] ✅ 锁屏信息更新完成: %@", self.nowPlayingSong.name);
@@ -587,6 +631,54 @@ static XCMusicPlayerModel *instance = nil;
     NSLog(@"=================================================================");
     NSLog(@"[PlayerModel] 🧪 内存缓存测试结束");
     NSLog(@"=================================================================");
+}
+
+#pragma mark - 锁屏进度定时器
+
+- (void)startLockScreenProgressTimer {
+    // 先停止之前的定时器
+    [self stopLockScreenProgressTimer];
+    
+    // 创建新的定时器，每秒更新一次锁屏进度
+    self.lockScreenTimer = [NSTimer scheduledTimerWithTimeInterval:1.0
+                                                            target:self
+                                                          selector:@selector(updateLockScreenProgress)
+                                                          userInfo:nil
+                                                           repeats:YES];
+    NSLog(@"[PlayerModel] 启动锁屏进度定时器");
+}
+
+- (void)stopLockScreenProgressTimer {
+    if (self.lockScreenTimer) {
+        [self.lockScreenTimer invalidate];
+        self.lockScreenTimer = nil;
+        NSLog(@"[PlayerModel] 停止锁屏进度定时器");
+    }
+}
+
+- (void)updateLockScreenProgress {
+    // 只更新锁屏的已播放时间，不更新其他信息
+    if (!self.nowPlayingSong || !self.player) {
+        return;
+    }
+    
+    MPNowPlayingInfoCenter *infoCenter = [MPNowPlayingInfoCenter defaultCenter];
+    NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithDictionary:infoCenter.nowPlayingInfo];
+    
+    // 获取当前播放时间
+    NSTimeInterval currentTime = CMTimeGetSeconds(self.player.currentTime);
+    if (isnan(currentTime) || currentTime < 0) {
+        currentTime = 0;
+    }
+    
+    // 更新已播放时间和播放速率
+    [dict setObject:@(currentTime) forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
+    
+    // 根据播放状态设置播放速率
+    CGFloat rate = (self.player.rate > 0) ? 1.0 : 0.0;
+    [dict setObject:@(rate) forKey:MPNowPlayingInfoPropertyPlaybackRate];
+    
+    [infoCenter setNowPlayingInfo:dict];
 }
 
 @end

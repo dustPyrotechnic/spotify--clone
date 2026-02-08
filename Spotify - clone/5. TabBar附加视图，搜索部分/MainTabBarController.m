@@ -31,6 +31,7 @@
 
 @interface MainTabBarController ()
 @property (nonatomic, assign) BOOL hasPresentedPlayer;
+@property (nonatomic, strong) XCMusicPlayerAccessoryView *musicPlayerAccessoryView;
 @end
 
 @implementation MainTabBarController
@@ -88,18 +89,72 @@
     self.tabBar.layer.borderWidth = 0;
 
     self.tabBarMinimizeBehavior = UITabBarMinimizeBehaviorOnScrollDown;
-    XCMusicPlayerAccessoryView *musicPayerAccessoryView = [[XCMusicPlayerAccessoryView alloc] initWithFrame:CGRectMake(20, 20, self.view.bounds.size.width - 40, 40) withImage:[UIImage imageNamed:@"1.jpeg"] andTitle:@"测试歌曲" withSonger:@"测试歌手" withCondition:NO];
+    
+    // 初始化底部播放条
+    self.musicPlayerAccessoryView = [[XCMusicPlayerAccessoryView alloc] initWithFrame:CGRectMake(20, 20, self.view.bounds.size.width - 40, 40) withImage:[UIImage imageNamed:@"1.jpeg"] andTitle:@"测试歌曲" withSonger:@"测试歌手" withCondition:NO];
 
     __weak typeof(self) weakSelf = self;
-    musicPayerAccessoryView.presentPlayerViewControllerBlock = ^(XCMusicPlayerViewController * _Nonnull playerVC) {
+    self.musicPlayerAccessoryView.presentPlayerViewControllerBlock = ^(XCMusicPlayerViewController * _Nonnull playerVC) {
         [weakSelf presentViewController:playerVC animated:YES completion:nil];
     };
 
-    self.bottomAccessory = [[UITabAccessory alloc] initWithContentView:musicPayerAccessoryView];
+    self.bottomAccessory = [[UITabAccessory alloc] initWithContentView:self.musicPlayerAccessoryView];
+    
+    // 注册通知监听
+    [self registerNotifications];
+    
+    // 同步当前播放状态
+    XCMusicPlayerModel *model = [XCMusicPlayerModel sharedInstance];
+    if (model.nowPlayingSong) {
+        [self.musicPlayerAccessoryView updateWithSong:model.nowPlayingSong];
+        // 使用 Model 维护的播放状态
+        [self.musicPlayerAccessoryView updatePlayState:model.isPlaying];
+    }
 
 //  XCMusicPlayerModel* model = [XCMusicPlayerModel sharedInstance];
 //  [model testPlayAppleMusicSong];
 }
+
+- (void)dealloc {
+    // 移除通知监听
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+#pragma mark - 通知注册
+
+- (void)registerNotifications {
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleNowPlayingSongDidChange:)
+                                                 name:XCMusicPlayerNowPlayingSongDidChangeNotification
+                                               object:nil];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handlePlaybackStateDidChange:)
+                                                 name:XCMusicPlayerPlaybackStateDidChangeNotification
+                                               object:nil];
+}
+
+#pragma mark - 通知处理
+
+- (void)handleNowPlayingSongDidChange:(NSNotification *)notification {
+    XC_YYSongData *song = notification.userInfo[@"song"];
+    if ([song isKindOfClass:[NSNull class]]) song = nil;
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.musicPlayerAccessoryView updateWithSong:song];
+        // 播放新歌曲时，自动将播放状态设为"播放中"（显示暂停按钮）
+        [self.musicPlayerAccessoryView updatePlayState:YES];
+    });
+}
+
+- (void)handlePlaybackStateDidChange:(NSNotification *)notification {
+    BOOL isPlaying = [notification.userInfo[@"isPlaying"] boolValue];
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.musicPlayerAccessoryView updatePlayState:isPlaying];
+    });
+}
+
 - (void) tabBarController:(UITabBarController *)tabBarController didSelectViewController:(UIViewController *)viewController {
   NSLog(@"didSelectViewController: %@", viewController);
   UIImpactFeedbackGenerator* feedbackGenerator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];

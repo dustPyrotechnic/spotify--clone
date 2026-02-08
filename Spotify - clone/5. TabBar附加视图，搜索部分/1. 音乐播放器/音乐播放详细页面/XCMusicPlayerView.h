@@ -6,6 +6,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "XC-YYSongData.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -38,6 +39,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIView* containerImageView;
 - (void) letAlbumImageBig;
 - (void) letAlbumImageSmall;
+
+#pragma mark - 配置方法
+/// 根据歌曲数据配置视图
+- (void)configureWithSong:(XC_YYSongData *)song;
 @end
 
 NS_ASSUME_NONNULL_END

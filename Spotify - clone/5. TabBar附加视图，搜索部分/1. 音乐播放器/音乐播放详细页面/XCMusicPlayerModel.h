@@ -13,6 +13,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+// 通知常量定义
+/// 当前播放歌曲变更通知
+extern NSString * const XCMusicPlayerNowPlayingSongDidChangeNotification;
+/// 播放状态变更通知
+extern NSString * const XCMusicPlayerPlaybackStateDidChangeNotification;
+
 @interface XCMusicPlayerModel : NSObject
 /// 全局的音乐播放器
 @property (nonatomic, strong) AVPlayer *player;
@@ -20,6 +26,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSMutableArray<XC_YYSongData*>* playerlist;
 /// 当前正在播放的歌
 @property (nonatomic, strong) XC_YYSongData* nowPlayingSong;
+/// 播放状态（YES: 正在播放, NO: 暂停）
+@property (nonatomic, assign, readonly) BOOL isPlaying;
 
 + (instancetype)sharedInstance;
 
@@ -39,6 +47,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)pauseMusic;
 /// 继续播放
 - (void)playMusic;
+
+#pragma mark - 锁屏信息更新
+/// 更新锁屏播放信息
+- (void)updateLockScreenInfo;
+/// 开始定时更新锁屏进度
+- (void)startLockScreenProgressTimer;
+/// 停止定时更新锁屏进度
+- (void)stopLockScreenProgressTimer;
 
 @end
 

@@ -6,10 +6,11 @@
 //
 
 #import "XCMusicPlayerAccessoryView.h"
-
 #import "XCMusicPlayerViewController.h"
+#import "XCMusicPlayerModel.h"
 
 #import <Masonry/Masonry.h>
+#import <SDWebImage/SDWebImage.h>
 
 @implementation XCMusicPlayerAccessoryView
 
@@ -100,27 +101,50 @@
 
   return self;
 }
+
+#pragma mark - 更新方法
+
+- (void)updateWithSong:(XC_YYSongData *)song {
+    if (!song) return;
+    
+    self.titleLabel.text = song.name ?: @"未知歌曲";
+    self.authorLabel.text = song.artist ?: @"未知艺术家";
+    
+    // 使用 SDWebImage 加载专辑封面
+    if (song.mainIma) {
+        NSURL *imageURL = [NSURL URLWithString:song.mainIma];
+        [self.imageView sd_setImageWithURL:imageURL
+                          placeholderImage:[UIImage systemImageNamed:@"music.note"]];
+    }
+}
+
+- (void)updatePlayState:(BOOL)isPlaying {
+    self.isPlaying = isPlaying;
+    if (isPlaying) {
+        [self.stopOrContinueButton setImage:[UIImage systemImageNamed:@"pause.fill"] forState:UIControlStateNormal];
+    } else {
+        [self.stopOrContinueButton setImage:[UIImage systemImageNamed:@"play.fill"] forState:UIControlStateNormal];
+    }
+}
+
+#pragma mark - 按钮响应
+
 - (void) pressStopOrContinueButton:(UIButton*)sender {
   NSLog(@"按下播放按钮");
-  self.isPlaying = !self.isPlaying;
-  // TODO: 暂停操作
-  if (self.isPlaying) {
-//    [sender setImage:[UIImage systemImageNamed:@"pause.fill"] forState:UIControlStateNormal];
-    [sender.imageView setSymbolImage:[UIImage systemImageNamed:@"pause.fill"] withContentTransition:[NSSymbolReplaceContentTransition replaceDownUpTransition]];
-    [sender setImage:[UIImage systemImageNamed:@"pause.fill"] forState:UIControlStateNormal];
-
+  // 调用 Model 的方法，由 Model 发送通知更新 UI
+  XCMusicPlayerModel *model = [XCMusicPlayerModel sharedInstance];
+  if (model.isPlaying) {
+      [model pauseMusic];
   } else {
-//    [sender setImage:[UIImage systemImageNamed:@"play.fill"] forState:UIControlStateNormal];
-    [sender.imageView setSymbolImage:[UIImage systemImageNamed:@"play.fill"] withContentTransition:[NSSymbolReplaceContentTransition replaceDownUpTransition]];
-    [sender setImage:[UIImage systemImageNamed:@"play.fill"] forState:UIControlStateNormal];
+      [model playMusic];
   }
-
 }
+
 // TODO: 播放下一首歌的逻辑
 - (void) pressNextButton:(UIButton*)sender {
   NSLog(@"播放下一首歌");
-  self.isPlaying = NO;
-  [self pressStopOrContinueButton:self.stopOrContinueButton];
+  XCMusicPlayerModel *model = [XCMusicPlayerModel sharedInstance];
+  [model playNextSong];
 }
 
 - (void) handleTap:(UITapGestureRecognizer*) gestureRecognizer {
@@ -142,6 +166,7 @@
 - (void) handleSwipe {
   // TODO: 解决滑动事件
 }
+
 /*
 // Only override drawRect: if you perform custom drawing.
 // An empty implementation adversely affects performance during animation.
