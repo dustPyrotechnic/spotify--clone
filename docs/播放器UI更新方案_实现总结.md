@@ -1,3 +1,9 @@
+---
+autosync-database:
+  - Notion
+NotionID-Notion: 301fe9f6-0608-814f-b932-cbec1ba32897
+link-Notion: https://www.notion.so/UI-_-301fe9f60608814fb932cbec1ba32897
+---
 # 播放器 UI 更新方案 - 实现总结
 
 > 完成日期: 2026-02-07  

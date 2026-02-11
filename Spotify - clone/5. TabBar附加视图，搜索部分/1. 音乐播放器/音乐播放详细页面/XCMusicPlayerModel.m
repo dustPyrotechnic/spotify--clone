@@ -32,7 +32,7 @@ NSString * const XCMusicPlayerPlaybackStateDidChangeNotification = @"XCMusicPlay
 static XCMusicPlayerModel *instance = nil;
 // 在 +load 方法中创建单例实例
 + (void)load {
-    NSLog(@"[PlayerModel] ✅ 单例初始化");
+    NSLog(@"[PlayerModel] 单例初始化");
     instance = [[super allocWithZone:NULL] init];
 }
 // 饿汉模式的全局访问点
@@ -52,14 +52,14 @@ static XCMusicPlayerModel *instance = nil;
     return self;
 }
 - (instancetype) init {
-    NSLog(@"[PlayerModel] 🎵 播放器初始化");
+    NSLog(@"[PlayerModel] 播放器初始化");
     self = [super init];
     [self signUpAVAudioSession];
     [self setupRemoteCommands];
     return self;
 }
 - (void)setNowPlayingSong:(XC_YYSongData *)nowPlayingSong {
-    NSLog(@"[PlayerModel] 🎵 当前歌曲变更: %@ -> %@", _nowPlayingSong.name ?: @"无", nowPlayingSong.name);
+    NSLog(@"[PlayerModel] 当前歌曲变更: %@ -> %@", _nowPlayingSong.name ?: @"无", nowPlayingSong.name);
     _nowPlayingSong = nowPlayingSong;
     [self updateLockScreenInfo];
     
@@ -286,7 +286,7 @@ static XCMusicPlayerModel *instance = nil;
 
 #pragma mark - 音乐播放代码
 - (void)pauseMusic {
-    NSLog(@"[PlayerModel] ⏸️ 暂停播放");
+    NSLog(@"[PlayerModel] 暂停播放");
     [self.player pause];
     _isPlaying = NO;
     // 停止定时器，并更新一次锁屏信息以反映暂停状态
@@ -300,7 +300,7 @@ static XCMusicPlayerModel *instance = nil;
 }
 
 - (void)playMusic {
-    NSLog(@"[PlayerModel] ▶️ 继续播放");
+    NSLog(@"[PlayerModel] 继续播放");
     [self.player play];
     _isPlaying = YES;
     // 启动定时器定期更新锁屏进度
@@ -316,43 +316,40 @@ static XCMusicPlayerModel *instance = nil;
 // 根据指定id，播放音乐
 - (void)playMusicWithId:(NSString *)songId {
     if (!songId.length) {
-        NSLog(@"[PlayerModel] ⚠️ playMusicWithId: songId 为空");
+        NSLog(@"[PlayerModel] playMusicWithId: songId 为空");
         return;
     }
     
-    NSLog(@"[PlayerModel] 🎵 请求播放歌曲: %@", songId);
+    NSLog(@"[PlayerModel] 请求播放歌曲: %@", songId);
     
     // 1. 先检查内存缓存
     NSURL *localURL = [[XCMusicMemoryCache sharedInstance] localURLForSongId:songId];
     if (localURL) {
-        NSLog(@"[PlayerModel] ✅ 命中内存缓存，使用本地播放");
+        NSLog(@"[PlayerModel] 命中内存缓存，使用本地播放");
         [self playWithURL:localURL songId:songId];
         [[XCMusicMemoryCache sharedInstance] setCurrentPlayingSong:songId];
         return;
     }
     
-    NSLog(@"[PlayerModel] 🔍 未命中缓存，准备从网络获取 URL...");
-    
-    // 2. 无缓存，从网络获取
+    NSLog(@"[PlayerModel] 未命中缓存");
+
     XCNetworkManager *networkManager = [XCNetworkManager sharedInstance];
     [networkManager findUrlOfSongWithId:songId completion:^(NSURL * _Nullable songUrl) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (songUrl) {
-                NSLog(@"[PlayerModel] 🌐 获取到歌曲 URL: %@", songUrl);
+                NSLog(@"[PlayerModel] 获取到歌曲 URL: %@", songUrl);
                 [self playWithURL:songUrl songId:songId];
-                
-                // 3. 后台下载到内存缓存（只缓存当前播放的）
+
                 XC_YYSongData *song = [self findSongInPlaylistById:songId];
                 if (song) {
-                    // 关键：将获取到的 URL 赋值给 song 对象
                     song.songUrl = songUrl.absoluteString;
-                    NSLog(@"[PlayerModel] ⬇️ 触发后台缓存下载, URL: %@", song.songUrl);
+                    NSLog(@"[PlayerModel] 触发后台缓存下载, URL: %@", song.songUrl);
                     [[XCMusicMemoryCache sharedInstance] downloadAndCache:song];
                 } else {
-                    NSLog(@"[PlayerModel] ⚠️ 播放列表中未找到该歌曲，无法缓存: %@", songId);
+                    NSLog(@"[PlayerModel] 播放列表中未找到该歌曲，无法缓存: %@", songId);
                 }
             } else {
-                NSLog(@"[PlayerModel] ❌ 错误: 无法获取歌曲 URL: %@", songId);
+                NSLog(@"[PlayerModel] 无法获取歌曲 URL: %@", songId);
             }
         });
     }];
@@ -360,21 +357,21 @@ static XCMusicPlayerModel *instance = nil;
 
 // 播放指定 URL
 - (void)playWithURL:(NSURL *)url songId:(NSString *)songId {
-    NSLog(@"[PlayerModel] 🎧 创建播放器: %@", songId);
-    NSLog(@"[PlayerModel]    URL: %@", url);
+    NSLog(@"[PlayerModel]创建播放器: %@", songId);
+    NSLog(@"[PlayerModel]URL: %@", url);
     
     AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:url];
     if (!self.player) {
         self.player = [AVPlayer playerWithPlayerItem:playerItem];
-        NSLog(@"[PlayerModel]    创建新的 AVPlayer");
+        NSLog(@"[PlayerModel] 创建新的 AVPlayer");
     } else {
         [self.player replaceCurrentItemWithPlayerItem:playerItem];
-        NSLog(@"[PlayerModel]    替换当前播放项");
+        NSLog(@"[PlayerModel] 替换当前播放项");
     }
     
     [self.player play];
     _isPlaying = YES;
-    NSLog(@"[PlayerModel] ▶️ 开始播放: %@", songId);
+    NSLog(@"[PlayerModel] 开始播放: %@", songId);
     [self updateLockScreenInfo];
     // 启动定时器更新锁屏进度
     [self startLockScreenProgressTimer];
@@ -383,38 +380,38 @@ static XCMusicPlayerModel *instance = nil;
 // 在播放列表中查找歌曲
 - (XC_YYSongData *)findSongInPlaylistById:(NSString *)songId {
     if (!self.playerlist || self.playerlist.count == 0) {
-        NSLog(@"[PlayerModel] ⚠️ 播放列表为空");
+        NSLog(@"[PlayerModel] 播放列表为空");
         return nil;
     }
     
     for (XC_YYSongData *song in self.playerlist) {
         if ([song.songId isEqualToString:songId]) {
-            NSLog(@"[PlayerModel] 🔍 在播放列表中找到歌曲: %@ (索引: %lu)", 
+            NSLog(@"[PlayerModel] 在播放列表中找到歌曲: %@ (索引: %lu)",
                   song.name, (unsigned long)[self.playerlist indexOfObject:song]);
             return song;
         }
     }
     
-    NSLog(@"[PlayerModel] ⚠️ 播放列表中未找到歌曲: %@", songId);
+    NSLog(@"[PlayerModel] 播放列表中未找到歌曲: %@", songId);
     return nil;
 }
 
 // 根据当前播放歌曲，自动切换到下一首歌（顺序播放）
 - (void)playNextSong {
-    NSLog(@"[PlayerModel] ⏭️ 切换到下一首");
-    
+    NSLog(@"[PlayerModel] 切换到下一首");
+
     if (self.playerlist.count == 0) {
-        NSLog(@"[PlayerModel] ⚠️ 播放列表为空，无法切换");
+        NSLog(@"[PlayerModel] 播放列表为空，无法切换");
         return;
     }
     
     // 找到当前播放索引
     NSInteger currentIndex = [self.playerlist indexOfObject:self.nowPlayingSong];
     if (currentIndex == NSNotFound) {
-        NSLog(@"[PlayerModel] ⚠️ 当前歌曲不在播放列表中，从第一首开始");
+        NSLog(@"[PlayerModel] 当前歌曲不在播放列表中，从第一首开始");
         currentIndex = -1;
     } else {
-        NSLog(@"[PlayerModel]    当前索引: %lu/%lu", 
+        NSLog(@"[PlayerModel] 当前索引: %lu/%lu",
               (unsigned long)currentIndex, (unsigned long)self.playerlist.count);
     }
     
@@ -423,14 +420,14 @@ static XCMusicPlayerModel *instance = nil;
     XC_YYSongData *nextSong = self.playerlist[nextIndex];
     self.nowPlayingSong = nextSong;
     
-    NSLog(@"[PlayerModel]    下一首索引: %lu, 歌曲: %@", 
+    NSLog(@"[PlayerModel] 下一首索引: %lu, 歌曲: %@",
           (unsigned long)nextIndex, nextSong.name);
     
     // 预加载下下首到内存
     NSInteger preloadIndex = (nextIndex + 1) % self.playerlist.count;
     if (preloadIndex != nextIndex) {  // 避免只有一首歌时重复加载
         XC_YYSongData *preloadSong = self.playerlist[preloadIndex];
-        NSLog(@"[PlayerModel] 🔮 预加载歌曲: %@ (索引: %lu)", 
+        NSLog(@"[PlayerModel] 预加载歌曲: %@ (索引: %lu)",
               preloadSong.name, (unsigned long)preloadIndex);
         [[XCMusicMemoryCache sharedInstance] downloadAndCache:preloadSong];
     }
@@ -440,19 +437,19 @@ static XCMusicPlayerModel *instance = nil;
 
 // 播放上一首
 - (void)playPreviousSong {
-    NSLog(@"[PlayerModel] ⏮️ 切换到上一首");
+    NSLog(@"[PlayerModel] 切换到上一首");
     
     if (self.playerlist.count == 0) {
-        NSLog(@"[PlayerModel] ⚠️ 播放列表为空，无法切换");
+        NSLog(@"[PlayerModel] 播放列表为空，无法切换");
         return;
     }
     
     NSInteger currentIndex = [self.playerlist indexOfObject:self.nowPlayingSong];
     if (currentIndex == NSNotFound) {
-        NSLog(@"[PlayerModel] ⚠️ 当前歌曲不在播放列表中");
+        NSLog(@"[PlayerModel] 当前歌曲不在播放列表中");
         currentIndex = 0;
     } else {
-        NSLog(@"[PlayerModel]    当前索引: %lu/%lu", 
+        NSLog(@"[PlayerModel] 当前索引: %lu/%lu",
               (unsigned long)currentIndex, (unsigned long)self.playerlist.count);
     }
     
@@ -461,29 +458,29 @@ static XCMusicPlayerModel *instance = nil;
     XC_YYSongData *prevSong = self.playerlist[prevIndex];
     self.nowPlayingSong = prevSong;
     
-    NSLog(@"[PlayerModel]    上一首索引: %lu, 歌曲: %@", 
+    NSLog(@"[PlayerModel] 上一首索引: %lu, 歌曲: %@",
           (unsigned long)prevIndex, prevSong.name);
     
     [self playMusicWithId:prevSong.songId];
 }
 #pragma mark - 对接远程控制器
 - (void)signUpAVAudioSession {
-    NSLog(@"[PlayerModel] 🔊 配置音频会话...");
+    NSLog(@"[PlayerModel] 配置音频会话");
     NSError *error = nil;
     AVAudioSession *session = [AVAudioSession sharedInstance];
 
     [session setCategory:AVAudioSessionCategoryPlayback error:&error];
     if (error) {
-        NSLog(@"[PlayerModel] ⚠️ Category 设置失败: %@", error.localizedDescription);
+        NSLog(@"[PlayerModel] Category 设置失败: %@", error.localizedDescription);
     } else {
-        NSLog(@"[PlayerModel] ✅ Category 设置成功");
+        NSLog(@"[PlayerModel] Category 设置成功");
     }
 
     [session setActive:YES error:&error];
     if (error) {
-        NSLog(@"[PlayerModel] ⚠️ Session 激活失败: %@", error.localizedDescription);
+        NSLog(@"[PlayerModel] Session 激活失败: %@", error.localizedDescription);
     } else {
-        NSLog(@"[PlayerModel] ✅ Session 激活成功");
+        NSLog(@"[PlayerModel] Session 激活成功");
     }
 }
 // 与系统控制器绑定操作
@@ -532,9 +529,9 @@ static XCMusicPlayerModel *instance = nil;
 
         if (cachedImage) {
             artworkImage = cachedImage;
-            NSLog(@"[PlayerModel]    使用缓存的专辑封面");
+            NSLog(@"[PlayerModel] 使用缓存的专辑封面");
         } else {
-            NSLog(@"[PlayerModel]    未找到专辑封面缓存");
+            NSLog(@"[PlayerModel] 未找到专辑封面缓存");
         }
     }
 
@@ -572,7 +569,7 @@ static XCMusicPlayerModel *instance = nil;
     [dict setObject:@(_isPlaying ? 1.0 : 0.0) forKey:MPNowPlayingInfoPropertyPlaybackRate];
 
     [infoCenter setNowPlayingInfo:dict];
-    NSLog(@"[PlayerModel] ✅ 锁屏信息更新完成: %@", self.nowPlayingSong.name);
+    NSLog(@"[PlayerModel] 锁屏信息更新完成: %@", self.nowPlayingSong.name);
 }
 #pragma mark - 缓存相关内容
 - (NSURL *)customURLFromOriginalURL:(NSURL *)originalURL {
