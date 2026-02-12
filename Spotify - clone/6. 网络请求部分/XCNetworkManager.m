@@ -2,8 +2,6 @@
 //  XCNetworkManager.m
 //  Spotify - clone
 //
-//  Created by 红尘一笑 on 2025/11/26.
-//
 
 #import "XCNetworkManager.h"
 #import "XCAlbumSimpleData.h"
@@ -12,9 +10,15 @@
 #import <AFNetworking/AFNetworking.h>
 #import <UICKeyChainStore/UICKeyChainStore.h>
 
+// API Token 存储 Key
+static NSString * const kAPIAccessTokenKey = @"api_access_token";
+static NSString * const kAPIRefreshTokenKey = @"api_refresh_token";
+static NSString * const kAPIServiceName = @"com.spotify.clone.api";
+
 @implementation XCNetworkManager
 static XCNetworkManager *instance = nil;
 
+// 饿汉式单例，类加载时创建实例
 + (void)load {
   instance = [[super allocWithZone:NULL] init];
 }
@@ -35,6 +39,9 @@ static XCNetworkManager *instance = nil;
   return self;
 }
 
+#pragma mark - Spotify Token 方法
+
+// 使用静态局部变量实现递归重试计数，最多重试 3 次
 - (void)getTokenWithCompletion:(void(^)(BOOL success))completion {
     static NSInteger tokenTimes = 0;
     NSString *url = @"https://accounts.spotify.com/api/token";
@@ -65,9 +72,11 @@ static XCNetworkManager *instance = nil;
     }];
 }
 
+// 使用静态局部变量实现失败重试，401 时自动刷新 Token，最多重试 10 次
 - (void)getDataOfAllAlbums:(NSMutableArray *)array {
     static NSInteger dataTimes = 0;
     NSString *token = [UICKeyChainStore stringForKey:@"token" service:@"com.spotify.clone"];
+    // Token 不存在时先获取 Token，成功后递归调用自身
     if (!token || token.length == 0) {
         [self getTokenWithCompletion:^(BOOL success) {
             if (success) {
@@ -98,6 +107,7 @@ static XCNetworkManager *instance = nil;
         if (!items || items.count == 0) return;
         [array removeAllObjects];
         NSMutableArray *currentGroup = nil;
+        // 每 10 个专辑分为一组，最多 5 组
         for (int i = 0; i < items.count; i++) {
             if (i % 10 == 0) {
                 if (array.count >= 5) break;
@@ -121,6 +131,7 @@ static XCNetworkManager *instance = nil;
     } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
         NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)task.response;
         NSInteger statusCode = httpResponse.statusCode;
+        // 401 表示 Token 过期，刷新后重试
         if (statusCode == 401) {
             [self getTokenWithCompletion:^(BOOL success) {
                 if (success) {
@@ -130,6 +141,7 @@ static XCNetworkManager *instance = nil;
             }];
             return;
         }
+        // 其他错误使用延时递归重试
         if (dataTimes < 10) {
             dataTimes += 1;
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -142,6 +154,7 @@ static XCNetworkManager *instance = nil;
 }
 
 #pragma mark - 网易云API
+// 使用 AFNetworking GET 请求，YYModel 自动解析 JSON 到模型数组
 - (void)getDataOfPlaylistsFromWY:(NSMutableArray *)array offset:(NSInteger)offset limit:(NSInteger)limit withCompletion:(void(^)(BOOL success))completion {
     NSString *baseUrl = @"https://1390963969-2g6ivueiij.ap-guangzhou.tencentscf.com";
     NSString *requestUrl = [NSString stringWithFormat:@"%@/top/playlist", baseUrl];
@@ -232,6 +245,7 @@ static XCNetworkManager *instance = nil;
 }
 
 #pragma mark - 歌曲操作
+// 请求歌曲播放 URL，处理 URL 为空的情况（版权或付费限制）
 - (void)findUrlOfSongWithId:(NSString *)songId completion:(void(^)(NSURL * _Nullable songUrl))completion {
     NSString *baseUrl = @"https://1390963969-2g6ivueiij.ap-guangzhou.tencentscf.com";
     NSString *requestUrl = [NSString stringWithFormat:@"%@/song/url/v1", baseUrl];
@@ -258,6 +272,454 @@ static XCNetworkManager *instance = nil;
     } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
         if (completion) completion(nil);
     }];
+}
+
+#pragma mark - API Token 测试方法 (基于 docs/API_USAGE_DOCUMENTATION.md)
+
+
+// 基础 URL: https://ding.liujiong.com/api
+static NSString * const kAPITestBaseURL = @"https://ding.liujiong.com/api";
+
+// 测试账号
+static NSString * const kAPITestAdminUsername = @"admin";
+static NSString * const kAPITestAdminPassword = @"admin123";
+static NSString * const kAPITestUserUsername = @"testuser";
+static NSString * const kAPITestUserPassword = @"user123";
+
+/// 测试1: 健康检查 (GET /test)
+- (void)testAPIHealthCheckWithCompletion:(void(^)(BOOL success, NSDictionary *response, NSError *error))completion {
+    NSLog(@"\n========== [APITest] 开始健康检查测试 ==========");
+    NSLog(@"[APITest] 请求: GET %@/test", kAPITestBaseURL);
+    
+    NSString *url = [NSString stringWithFormat:@"%@/test", kAPITestBaseURL];
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.requestSerializer = [AFJSONRequestSerializer serializer];
+    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+    
+    NSDate *startTime = [NSDate date];
+    
+    [manager GET:url
+      parameters:nil
+         headers:nil
+        progress:nil
+         success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        NSLog(@"[APITest] ✅ 健康检查成功！耗时: %.3f秒", elapsed);
+        
+        if ([responseObject isKindOfClass:[NSDictionary class]]) {
+            NSLog(@"[APITest] 响应数据: %@", responseObject);
+            if (completion) completion(YES, responseObject, nil);
+        } else {
+            if (completion) completion(YES, nil, nil);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)task.response;
+        NSLog(@"[APITest] ❌ 健康检查失败！耗时: %.3f秒, HTTP %ld", elapsed, (long)httpResponse.statusCode);
+        if (completion) completion(NO, nil, error);
+    }];
+}
+
+/// 测试2: 用户登录获取 Token (POST /v1/auth/login)
+- (void)testAPILoginWithUsername:(NSString *)username
+                        password:(NSString *)password
+                      completion:(void(^)(BOOL success, NSString *accessToken, NSString *refreshToken, NSDictionary *userInfo, NSError *error))completion {
+    NSLog(@"\n========== [APITest] 开始登录测试 ==========");
+    NSLog(@"[APITest] 请求: POST %@/v1/auth/login", kAPITestBaseURL);
+    NSLog(@"[APITest] 用户名: %@", username);
+    
+    NSString *url = [NSString stringWithFormat:@"%@/v1/auth/login", kAPITestBaseURL];
+    NSDictionary *params = @{
+        @"username": username,
+        @"password": password
+    };
+    
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.requestSerializer = [AFJSONRequestSerializer serializer];
+    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+    [manager.requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    
+    NSDate *startTime = [NSDate date];
+    
+    [manager POST:url
+       parameters:params
+          headers:nil
+         progress:nil
+          success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        
+        if (![responseObject isKindOfClass:[NSDictionary class]]) {
+            NSLog(@"[APITest] ❌ 响应格式错误");
+            NSError *error = [NSError errorWithDomain:@"APITestError" code:-1 userInfo:@{NSLocalizedDescriptionKey: @"响应格式错误"}];
+            if (completion) completion(NO, nil, nil, nil, error);
+            return;
+        }
+        
+        NSInteger code = [responseObject[@"code"] integerValue];
+        NSString *message = responseObject[@"message"] ?: @"unknown";
+        
+        if (code == 0) {
+            NSDictionary *data = responseObject[@"data"];
+            NSString *accessToken = data[@"accessToken"];
+            NSString *refreshToken = data[@"refreshToken"];
+            NSNumber *expiresAt = data[@"expiresAt"];
+            
+            NSLog(@"[APITest] ✅ 登录成功！耗时: %.3f秒", elapsed);
+            NSLog(@"[APITest] Access Token: %@...", [accessToken substringToIndex:MIN(20, accessToken.length)]);
+            NSLog(@"[APITest] Refresh Token: %@...", [refreshToken substringToIndex:MIN(20, refreshToken.length)]);
+            NSLog(@"[APITest] 过期时间戳: %@", expiresAt);
+            
+            // 存储到 KeyChain
+            [UICKeyChainStore setString:accessToken forKey:kAPIAccessTokenKey service:kAPIServiceName];
+            [UICKeyChainStore setString:refreshToken forKey:kAPIRefreshTokenKey service:kAPIServiceName];
+            NSLog(@"[APITest] Token 已存储到 KeyChain");
+            
+            if (completion) completion(YES, accessToken, refreshToken, data, nil);
+        } else {
+            NSLog(@"[APITest] ❌ 登录失败！Code: %ld, Message: %@", (long)code, message);
+            NSError *error = [NSError errorWithDomain:@"APITestError" code:code userInfo:@{NSLocalizedDescriptionKey: message}];
+            if (completion) completion(NO, nil, nil, nil, error);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)task.response;
+        NSLog(@"[APITest] ❌ 网络请求失败！耗时: %.3f秒, HTTP %ld", elapsed, (long)httpResponse.statusCode);
+        NSLog(@"[APITest] 错误: %@", error.localizedDescription);
+        if (completion) completion(NO, nil, nil, nil, error);
+    }];
+}
+
+/// 测试3: 验证当前 Token 是否有效 (GET /v1/auth/validate)
+- (void)testAPIValidateTokenWithCompletion:(void(^)(BOOL isValid, NSDictionary *tokenInfo, NSInteger code, NSError *error))completion {
+    NSLog(@"\n========== [APITest] 开始 Token 验证测试 ==========");
+    NSLog(@"[APITest] 请求: GET %@/v1/auth/validate", kAPITestBaseURL);
+    
+    NSString *accessToken = [UICKeyChainStore stringForKey:kAPIAccessTokenKey service:kAPIServiceName];
+    
+    if (!accessToken || accessToken.length == 0) {
+        NSLog(@"[APITest] ⚠️ 未找到 Access Token，请先登录");
+        NSError *error = [NSError errorWithDomain:@"APITestError" code:401 userInfo:@{NSLocalizedDescriptionKey: @"未登录"}];
+        if (completion) completion(NO, nil, 401, error);
+        return;
+    }
+    
+    NSLog(@"[APITest] 使用 Token: %@...", [accessToken substringToIndex:MIN(20, accessToken.length)]);
+    
+    NSString *url = [NSString stringWithFormat:@"%@/v1/auth/validate", kAPITestBaseURL];
+    NSString *authHeader = [NSString stringWithFormat:@"Bearer %@", accessToken];
+    
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.requestSerializer = [AFJSONRequestSerializer serializer];
+    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+    [manager.requestSerializer setValue:authHeader forHTTPHeaderField:@"Authorization"];
+    
+    NSDate *startTime = [NSDate date];
+    
+    [manager GET:url
+      parameters:nil
+         headers:nil
+        progress:nil
+         success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        
+        NSInteger code = [responseObject[@"code"] integerValue];
+        
+        if (code == 0) {
+            NSDictionary *data = responseObject[@"data"];
+            NSLog(@"[APITest] ✅ Token 验证成功！耗时: %.3f秒", elapsed);
+            NSLog(@"[APITest] Token 信息: %@", data);
+            if (completion) completion(YES, data, code, nil);
+        } else {
+            NSString *message = responseObject[@"message"] ?: @"Token 无效";
+            NSLog(@"[APITest] ❌ Token 验证失败！Code: %ld, Message: %@", (long)code, message);
+            NSError *error = [NSError errorWithDomain:@"APITestError" code:code userInfo:@{NSLocalizedDescriptionKey: message}];
+            if (completion) completion(NO, nil, code, error);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)task.response;
+        NSInteger statusCode = httpResponse.statusCode;
+        
+        NSLog(@"[APITest] ❌ Token 验证请求失败！耗时: %.3f秒, HTTP %ld", elapsed, (long)statusCode);
+        
+        if (statusCode == 401) {
+            NSLog(@"[APITest] ⚠️ Token 已过期或无效 (401)");
+        }
+        
+        if (completion) completion(NO, nil, statusCode, error);
+    }];
+}
+
+/// 测试4: 获取用户信息 (GET /v1/user/profile)
+- (void)testAPIGetUserProfileWithCompletion:(void(^)(BOOL success, NSDictionary *userInfo, NSError *error))completion {
+    NSLog(@"\n========== [APITest] 开始获取用户信息测试 ==========");
+    NSLog(@"[APITest] 请求: GET %@/v1/user/profile", kAPITestBaseURL);
+    
+    NSString *accessToken = [UICKeyChainStore stringForKey:kAPIAccessTokenKey service:kAPIServiceName];
+    
+    if (!accessToken || accessToken.length == 0) {
+        NSLog(@"[APITest] ⚠️ 未找到 Access Token，请先登录");
+        NSError *error = [NSError errorWithDomain:@"APITestError" code:401 userInfo:@{NSLocalizedDescriptionKey: @"未登录"}];
+        if (completion) completion(NO, nil, error);
+        return;
+    }
+    
+    NSString *url = [NSString stringWithFormat:@"%@/v1/user/profile", kAPITestBaseURL];
+    NSString *authHeader = [NSString stringWithFormat:@"Bearer %@", accessToken];
+    
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.requestSerializer = [AFJSONRequestSerializer serializer];
+    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+    [manager.requestSerializer setValue:authHeader forHTTPHeaderField:@"Authorization"];
+    
+    NSDate *startTime = [NSDate date];
+    
+    [manager GET:url
+      parameters:nil
+         headers:nil
+        progress:nil
+         success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        
+        NSInteger code = [responseObject[@"code"] integerValue];
+        
+        if (code == 0) {
+            NSDictionary *data = responseObject[@"data"];
+            NSLog(@"[APITest] ✅ 获取用户信息成功！耗时: %.3f秒", elapsed);
+            NSLog(@"[APITest] 用户信息: %@", data);
+            if (completion) completion(YES, data, nil);
+        } else {
+            NSString *message = responseObject[@"message"] ?: @"获取失败";
+            NSLog(@"[APITest] ❌ 获取用户信息失败！Code: %ld, Message: %@", (long)code, message);
+            NSError *error = [NSError errorWithDomain:@"APITestError" code:code userInfo:@{NSLocalizedDescriptionKey: message}];
+            if (completion) completion(NO, nil, error);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        NSLog(@"[APITest] ❌ 获取用户信息请求失败！耗时: %.3f秒", elapsed);
+        if (completion) completion(NO, nil, error);
+    }];
+}
+
+/// 测试5: 刷新 Token (POST /v1/auth/refresh)
+- (void)testAPIRefreshTokenWithCompletion:(void(^)(BOOL success, NSString *newAccessToken, NSString *newRefreshToken, NSError *error))completion {
+    NSLog(@"\n========== [APITest] 开始刷新 Token 测试 ==========");
+    NSLog(@"[APITest] 请求: POST %@/v1/auth/refresh", kAPITestBaseURL);
+    
+    NSString *refreshToken = [UICKeyChainStore stringForKey:kAPIRefreshTokenKey service:kAPIServiceName];
+    
+    if (!refreshToken || refreshToken.length == 0) {
+        NSLog(@"[APITest] ⚠️ 未找到 Refresh Token，无法刷新");
+        NSError *error = [NSError errorWithDomain:@"APITestError" code:401 userInfo:@{NSLocalizedDescriptionKey: @"无刷新令牌"}];
+        if (completion) completion(NO, nil, nil, error);
+        return;
+    }
+    
+    NSLog(@"[APITest] 使用 Refresh Token: %@...", [refreshToken substringToIndex:MIN(20, refreshToken.length)]);
+    
+    NSString *url = [NSString stringWithFormat:@"%@/v1/auth/refresh", kAPITestBaseURL];
+    NSDictionary *params = @{@"refreshToken": refreshToken};
+    
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.requestSerializer = [AFJSONRequestSerializer serializer];
+    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+    [manager.requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    
+    NSDate *startTime = [NSDate date];
+    
+    [manager POST:url
+       parameters:params
+          headers:nil
+         progress:nil
+          success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        
+        NSInteger code = [responseObject[@"code"] integerValue];
+        
+        if (code == 0) {
+            NSDictionary *data = responseObject[@"data"];
+            NSString *newAccessToken = data[@"accessToken"];
+            NSString *newRefreshToken = data[@"refreshToken"];
+            
+            NSLog(@"[APITest] ✅ 刷新 Token 成功！耗时: %.3f秒", elapsed);
+            NSLog(@"[APITest] 新 Access Token: %@...", [newAccessToken substringToIndex:MIN(20, newAccessToken.length)]);
+            NSLog(@"[APITest] 新 Refresh Token: %@...", [newRefreshToken substringToIndex:MIN(20, newRefreshToken.length)]);
+            
+            // 更新存储
+            [UICKeyChainStore setString:newAccessToken forKey:kAPIAccessTokenKey service:kAPIServiceName];
+            [UICKeyChainStore setString:newRefreshToken forKey:kAPIRefreshTokenKey service:kAPIServiceName];
+            NSLog(@"[APITest] 新 Token 已更新到 KeyChain");
+            
+            if (completion) completion(YES, newAccessToken, newRefreshToken, nil);
+        } else {
+            NSString *message = responseObject[@"message"] ?: @"刷新失败";
+            NSLog(@"[APITest] ❌ 刷新 Token 失败！Code: %ld, Message: %@", (long)code, message);
+            
+            // 清除失效的 Token
+            [UICKeyChainStore removeItemForKey:kAPIAccessTokenKey service:kAPIServiceName];
+            [UICKeyChainStore removeItemForKey:kAPIRefreshTokenKey service:kAPIServiceName];
+            
+            NSError *error = [NSError errorWithDomain:@"APITestError" code:code userInfo:@{NSLocalizedDescriptionKey: message}];
+            if (completion) completion(NO, nil, nil, error);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        NSLog(@"[APITest] ❌ 刷新 Token 请求失败！耗时: %.3f秒", elapsed);
+        if (completion) completion(NO, nil, nil, error);
+    }];
+}
+
+/// 测试6: 管理员面板访问测试 (GET /v1/admin/dashboard)
+- (void)testAPIAdminDashboardWithCompletion:(void(^)(BOOL success, NSDictionary *data, NSError *error))completion {
+    NSLog(@"\n========== [APITest] 开始管理员面板测试 ==========");
+    NSLog(@"[APITest] 请求: GET %@/v1/admin/dashboard", kAPITestBaseURL);
+    
+    NSString *accessToken = [UICKeyChainStore stringForKey:kAPIAccessTokenKey service:kAPIServiceName];
+    
+    if (!accessToken || accessToken.length == 0) {
+        NSLog(@"[APITest] ⚠️ 未找到 Access Token，请先登录");
+        NSError *error = [NSError errorWithDomain:@"APITestError" code:401 userInfo:@{NSLocalizedDescriptionKey: @"未登录"}];
+        if (completion) completion(NO, nil, error);
+        return;
+    }
+    
+    NSString *url = [NSString stringWithFormat:@"%@/v1/admin/dashboard", kAPITestBaseURL];
+    NSString *authHeader = [NSString stringWithFormat:@"Bearer %@", accessToken];
+    
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.requestSerializer = [AFJSONRequestSerializer serializer];
+    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+    [manager.requestSerializer setValue:authHeader forHTTPHeaderField:@"Authorization"];
+    
+    NSDate *startTime = [NSDate date];
+    
+    [manager GET:url
+      parameters:nil
+         headers:nil
+        progress:nil
+         success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        
+        NSInteger code = [responseObject[@"code"] integerValue];
+        
+        if (code == 0) {
+            NSDictionary *data = responseObject[@"data"];
+            NSLog(@"[APITest] ✅ 管理员面板访问成功！耗时: %.3f秒", elapsed);
+            NSLog(@"[APITest] 数据: %@", data);
+            if (completion) completion(YES, data, nil);
+        } else {
+            NSString *message = responseObject[@"message"] ?: @"访问失败";
+            NSLog(@"[APITest] ❌ 管理员面板访问失败！Code: %ld, Message: %@", (long)code, message);
+            NSError *error = [NSError errorWithDomain:@"APITestError" code:code userInfo:@{NSLocalizedDescriptionKey: message}];
+            if (completion) completion(NO, nil, error);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:startTime];
+        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)task.response;
+        NSInteger statusCode = httpResponse.statusCode;
+        
+        NSLog(@"[APITest] ❌ 管理员面板请求失败！耗时: %.3f秒, HTTP %ld", elapsed, (long)statusCode);
+        
+        if (statusCode == 403) {
+            NSLog(@"[APITest] ⚠️ 当前用户无管理员权限 (403 Forbidden)");
+        }
+        
+        if (completion) completion(NO, nil, error);
+    }];
+}
+
+/// 测试7: 完整流程测试 (登录 -> 验证 -> 获取用户信息)
+- (void)testAPIFullFlowWithCompletion:(void(^)(BOOL success, NSString *message))completion {
+    NSLog(@"\n🚀 ========== [APITest] 开始完整流程测试 ==========");
+    NSLog(@"[APITest] 测试流程: 登录 -> 验证Token -> 获取用户信息");
+    NSLog(@"[APITest] 使用测试账号: %@ / %@", kAPITestAdminUsername, kAPITestAdminPassword);
+    
+    __weak typeof(self) weakSelf = self;
+    
+    // 第一步：登录
+    [self testAPILoginWithUsername:kAPITestAdminUsername
+                          password:kAPITestAdminPassword
+                        completion:^(BOOL success, NSString *accessToken, NSString *refreshToken, NSDictionary *userInfo, NSError *error) {
+        
+        if (!success) {
+            NSString *msg = [NSString stringWithFormat:@"登录失败: %@", error.localizedDescription];
+            NSLog(@"[APITest] ❌ %@", msg);
+            if (completion) completion(NO, msg);
+            return;
+        }
+        
+        NSLog(@"\n----- 步骤 1/3: 登录成功，开始验证 Token -----");
+        
+        // 第二步：验证 Token
+        [weakSelf testAPIValidateTokenWithCompletion:^(BOOL isValid, NSDictionary *tokenInfo, NSInteger code, NSError *error) {
+            
+            if (!isValid) {
+                NSString *msg = [NSString stringWithFormat:@"Token 验证失败 (Code: %ld): %@", (long)code, error.localizedDescription];
+                NSLog(@"[APITest] ❌ %@", msg);
+                if (completion) completion(NO, msg);
+                return;
+            }
+            
+            NSLog(@"\n----- 步骤 2/3: Token 验证成功，开始获取用户信息 -----");
+            
+            // 第三步：获取用户信息
+            [weakSelf testAPIGetUserProfileWithCompletion:^(BOOL success, NSDictionary *userInfo, NSError *error) {
+                
+                if (!success) {
+                    NSString *msg = [NSString stringWithFormat:@"获取用户信息失败: %@", error.localizedDescription];
+                    NSLog(@"[APITest] ❌ %@", msg);
+                    if (completion) completion(NO, msg);
+                    return;
+                }
+                
+                NSString *username = userInfo[@"username"] ?: @"unknown";
+                NSString *role = userInfo[@"role"] ?: @"unknown";
+                
+                NSString *msg = [NSString stringWithFormat:@"完整流程测试通过！用户: %@, 角色: %@", username, role];
+                NSLog(@"[APITest] ✅ %@", msg);
+                NSLog(@"🚀 ========== [APITest] 完整流程测试结束 ==========\n");
+                
+                if (completion) completion(YES, msg);
+            }];
+        }];
+    }];
+}
+
+/// 测试8: 清除存储的 Token
+- (void)testAPIClearStoredTokens {
+    NSLog(@"\n========== [APITest] 清除存储的 Token ==========");
+    
+    NSString *accessToken = [UICKeyChainStore stringForKey:kAPIAccessTokenKey service:kAPIServiceName];
+    NSString *refreshToken = [UICKeyChainStore stringForKey:kAPIRefreshTokenKey service:kAPIServiceName];
+    
+    if (accessToken) {
+        NSLog(@"[APITest] 清除前的 Access Token: %@...", [accessToken substringToIndex:MIN(20, accessToken.length)]);
+    }
+    if (refreshToken) {
+        NSLog(@"[APITest] 清除前的 Refresh Token: %@...", [refreshToken substringToIndex:MIN(20, refreshToken.length)]);
+    }
+    
+    [UICKeyChainStore removeItemForKey:kAPIAccessTokenKey service:kAPIServiceName];
+    [UICKeyChainStore removeItemForKey:kAPIRefreshTokenKey service:kAPIServiceName];
+    
+    NSString *checkAccess = [UICKeyChainStore stringForKey:kAPIAccessTokenKey service:kAPIServiceName];
+    NSString *checkRefresh = [UICKeyChainStore stringForKey:kAPIRefreshTokenKey service:kAPIServiceName];
+    
+    if (!checkAccess && !checkRefresh) {
+        NSLog(@"[APITest] ✅ 所有 Token 已清除成功");
+    } else {
+        NSLog(@"[APITest] ⚠️ Token 清除不完全");
+    }
+}
+
+/// 测试9: 获取当前存储的 Access Token
+- (NSString *)testAPIGetStoredAccessToken {
+    return [UICKeyChainStore stringForKey:kAPIAccessTokenKey service:kAPIServiceName];
+}
+
+/// 测试10: 获取当前存储的 Refresh Token
+- (NSString *)testAPIGetStoredRefreshToken {
+    return [UICKeyChainStore stringForKey:kAPIRefreshTokenKey service:kAPIServiceName];
 }
 
 @end
