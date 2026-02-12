@@ -113,14 +113,17 @@
 
 //  XCMusicPlayerModel* model = [XCMusicPlayerModel sharedInstance];
 //  [model testPlayAppleMusicSong];
-  [[XCNetworkManager sharedInstance] testAPIFullFlowWithCompletion:^(BOOL success, NSString * _Nonnull message) {
-        if (success) {
-            NSLog(@"测试成功: %@", message);
-          [[XCNetworkManager sharedInstance] testAPIClearStoredTokens];
-        } else {
-            NSLog(@"测试失败: %@", message);
-          [[XCNetworkManager sharedInstance] testAPIClearStoredTokens];
-        }
+//  [[XCNetworkManager sharedInstance] testAPIFullFlowWithCompletion:^(BOOL success, NSString * _Nonnull message) {
+//        if (success) {
+//            NSLog(@"测试成功: %@", message);
+//          [[XCNetworkManager sharedInstance] testAPIClearStoredTokens];
+//        } else {
+//            NSLog(@"测试失败: %@", message);
+//          [[XCNetworkManager sharedInstance] testAPIClearStoredTokens];
+//        }
+//  }];
+  [[XCNetworkManager sharedInstance] loginWithAccount:@"admin" password:@"admin123" completion:^(BOOL success, NSString * _Nullable accessToken, NSString * _Nullable refreshToken, NSDictionary * _Nullable userInfo, NSError * _Nullable error) {
+    NSLog(@"登录成功");
   }];
 
 
