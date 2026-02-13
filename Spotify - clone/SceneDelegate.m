@@ -16,6 +16,9 @@
 #import "XCALbumDetailViewController.h"
 
 
+#import "XCAudioCachePhase1Test.h"
+#import "XCAudioCachePhase2Test.h"
+
 @interface SceneDelegate ()
 
 @end
@@ -32,6 +35,8 @@
   MainTabBarController* mainTabBarController = [[MainTabBarController alloc] init];
   self.window.rootViewController = mainTabBarController;
   [self.window makeKeyAndVisible];
+  [XCAudioCachePhase1Test runAllTests];
+  [XCAudioCachePhase2Test runAllTests];
 
 //  [self changeViewToDetailPage];
 

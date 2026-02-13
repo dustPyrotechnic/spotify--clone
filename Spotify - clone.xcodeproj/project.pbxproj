@@ -12,7 +12,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		4F5166FB781B7783839F632E /* Pods_Spotify___clone.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Spotify___clone.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F5166FB781B7783839F632E /* Pods_Spotify___clone.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = "Pods_Spotify___clone.framework"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A48C4601EBEA06EE1538720 /* Pods-Spotify - clone.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Spotify - clone.release.xcconfig"; path = "Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone.release.xcconfig"; sourceTree = "<group>"; };
 		8450C5558A63DF8A726B03DB /* Pods-Spotify - clone.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Spotify - clone.debug.xcconfig"; path = "Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone.debug.xcconfig"; sourceTree = "<group>"; };
 		CA4DDAD92ECDFC3200AD601D /* Spotify - clone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Spotify - clone.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -190,9 +190,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

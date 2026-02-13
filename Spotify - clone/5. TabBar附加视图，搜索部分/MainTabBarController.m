@@ -122,9 +122,11 @@
 //          [[XCNetworkManager sharedInstance] testAPIClearStoredTokens];
 //        }
 //  }];
+  /*
   [[XCNetworkManager sharedInstance] loginWithAccount:@"admin" password:@"admin123" completion:^(BOOL success, NSString * _Nullable accessToken, NSString * _Nullable refreshToken, NSDictionary * _Nullable userInfo, NSError * _Nullable error) {
     NSLog(@"登录成功");
   }];
+   */
 
 
 }
