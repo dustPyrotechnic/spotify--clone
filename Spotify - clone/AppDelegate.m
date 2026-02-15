@@ -6,6 +6,7 @@
 //
 
 #import "AppDelegate.h"
+#import "11. 音频缓存/Tests/XCAudioCacheTestRunner.h"
 
 @interface AppDelegate ()
 
@@ -16,6 +17,13 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
   // Override point for customization after application launch.
+  
+  // ====== Phase 3 测试 ======
+  #ifdef DEBUG
+    [XCAudioCacheTestRunner runAllPhaseTests];
+  #endif
+  // =========================
+  
   return YES;
 }
 

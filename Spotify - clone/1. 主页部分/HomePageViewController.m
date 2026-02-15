@@ -7,6 +7,7 @@
 #import <Masonry/Masonry.h>
 
 #import "HomePageViewController.h"
+#import "XCAudioCacheTestRunner.h"
 
 #import "HomePageViewCollectionViewTableViewCell.h"
 
@@ -95,6 +96,18 @@
     [btnArr addObject:btnItem];
 
   }
+  
+  // ====== 测试按钮 ======
+  #ifdef DEBUG
+  UIBarButtonItem *testBtn = [[UIBarButtonItem alloc] initWithTitle:@"测试"
+                                                               style:UIBarButtonItemStylePlain
+                                                              target:self
+                                                              action:@selector(showCacheTestMenu:)];
+  testBtn.tintColor = [UIColor systemRedColor];
+  [btnArr addObject:testBtn];
+  #endif
+  // ====================
+  
   // 全部
 
   // 音乐
@@ -275,5 +288,12 @@
     // Pass the selected object to the new view controller.
 }
 */
+
+#pragma mark - 缓存测试
+#ifdef DEBUG
+- (void)showCacheTestMenu:(id)sender {
+  [XCAudioCacheTestRunner showTestMenuFromViewController:self];
+}
+#endif
 
 @end

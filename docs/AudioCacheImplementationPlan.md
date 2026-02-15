@@ -187,18 +187,55 @@ NSAssert([retrieved.songId isEqualToString:@"test_song_1"], @"查询失败");
 
 ## Phase 3: L1 层 - NSCache 分段缓存
 **时间**: 第 5-6 天  
-**状态**: ⬜ 未开始
+**状态**: ✅ 已完成
 
-- [ ] 3.1 创建 `XCMemoryCacheManager.h/m` 单例
-- [ ] 3.2 实现 `storeSegmentData:forSongId:segmentIndex:` 存储分段
-- [ ] 3.3 实现 `segmentDataForSongId:segmentIndex:` 读取分段
-- [ ] 3.4 实现 `hasSegmentForSongId:segmentIndex:` 检查是否存在
-- [ ] 3.5 实现 `getAllSegmentsForSongId:` 获取所有分段并排序
-- [ ] 3.6 实现 `clearSegmentsForSongId:` 清空指定歌曲所有分段
-- [ ] 3.7 实现 `setCurrentSongPriority:` 提升当前歌曲分段优先级
-- [ ] 3.8 内存警告时清理非当前播放歌曲的分段
+- [x] 3.1 创建 `XCMemoryCacheManager.h/m` 单例
+- [x] 3.2 实现 `storeSegmentData:forSongId:segmentIndex:` 存储分段
+- [x] 3.3 实现 `segmentDataForSongId:segmentIndex:` 读取分段
+- [x] 3.4 实现 `hasSegmentForSongId:segmentIndex:` 检查是否存在
+- [x] 3.5 实现 `getAllSegmentsForSongId:` 获取所有分段并排序
+- [x] 3.6 实现 `clearSegmentsForSongId:` 清空指定歌曲所有分段
+- [x] 3.7 实现 `setCurrentSongPriority:` 提升当前歌曲分段优先级
+- [x] 3.8 内存警告时清理非当前播放歌曲的分段
 
 **Key 格式**: `@{songId}_{segmentIndex}` (例如: "123456_0")
+
+**新增测试文件**:
+```
+11. 音频缓存/
+├── L1/XCMemoryCacheManager.h/m       # L1 层主管理器 [Phase 3]
+└── Tests/XCAudioCachePhase3Test.h/m  # Phase 3 测试 [Phase 3]
+```
+
+**测试方法**:
+```objc
+// 在 AppDelegate 或 ViewController 中调用
+[XCAudioCachePhase3Test runAllTests];
+```
+
+**测试输出示例**:
+```
+[Phase3Test] ========== Phase 3 Test Start ==========
+[Phase3Test] Testing singleton...
+[Phase3Test] Singleton OK
+[Phase3Test] Testing store and retrieve segment...
+[Phase3Test] Store and retrieve OK
+[Phase3Test] Testing hasSegment...
+[Phase3Test] hasSegment OK
+[Phase3Test] Testing multiple segments...
+[Phase3Test] Multiple segments OK
+[Phase3Test] Testing getAllSegments...
+[Phase3Test] getAllSegments OK
+[Phase3Test] Testing clearSegmentsForSong...
+[Phase3Test] clearSegmentsForSong OK
+[Phase3Test] Testing priority song...
+[Phase3Test] Priority song OK
+[Phase3Test] Testing cache statistics...
+[Phase3Test] Cache statistics OK
+[Phase3Test] Testing concurrent access...
+[Phase3Test] Concurrent access OK
+[Phase3Test] ========== Phase 3 Test End ==========
+```
 
 **验证手段**:
 ```objc
@@ -227,7 +264,14 @@ NSAssert(exists == YES, @"存在性检查失败");
 BOOL notExists = [manager hasSegmentForSongId:@"song_123" segmentIndex:0];
 NSAssert(notExists == NO, @"清理失败");
 
-// 6. 内存监控
+// 6. 优先级测试
+[manager setCurrentSongPriority:@"song_123"];
+// 添加其他歌曲的分段，调用 trimCache，验证优先歌曲分段保留
+
+// 7. 并发测试
+// 100 个线程并发存储和读取，验证数据一致性
+
+// 8. 内存监控
 // 使用 Instruments 监控内存占用，确保无泄漏
 ```
 
@@ -698,21 +742,26 @@ AVPlayer 请求数据 Range: bytes=0-524287
 
 ## 文件清单
 
-### 新建文件（11 个，Phase 1 完成 7 个）
+### 新建文件（13 个，Phase 1-3 已完成）
 ```
 11. 音频缓存/
-├── XCAudioCacheConst.h                 # 常量 [Phase 1]
-├── XCAudioSegmentInfo.h/m              # 分段信息 [Phase 1]
-├── XCAudioSongCacheInfo.h/m            # 歌曲缓存信息 [Phase 1]
-├── XCAudioCachePathUtils.h/m           # 路径管理工具 [Phase 1]
-├── XCAudioCachePhase1Test.h/m          # Phase 1 测试 [Phase 1]
-├── XCCacheIndexManager.h/m             # 索引管理器 [Phase 2]
-XCAudioCachePhase2Test.h/m            # Phase 2 测试 [Phase 2]
-├── XCMemoryCacheManager.h/m            # L1 层 [Phase 3]
-├── XCTempCacheManager.h/m              # L2 层 [Phase 5]
-├── XCPersistentCacheManager.h/m        # L3 层 [Phase 4]
-├── XCAudioCacheManager.h/m             # 主管理器 [Phase 6]
-└── XCPreloadManager.h/m                # 预加载管理器 [Phase 7]
+├── XCAudioCacheConst.h                 # 常量 [Phase 1] ✅
+├── XCAudioCachePathUtils.h/m           # 路径管理工具 [Phase 1] ✅
+├── L1/
+│   ├── XCAudioSegmentInfo.h/m          # 分段信息 [Phase 1] ✅
+│   ├── XCMemoryCacheManager.h/m        # L1 层 [Phase 3] ✅
+├── L3/
+│   ├── XCAudioSongCacheInfo.h/m        # 歌曲缓存信息 [Phase 1] ✅
+│   └── XCCacheIndexManager.h/m         # 索引管理器 [Phase 2] ✅
+├── Tests/
+│   ├── XCAudioCachePhase1Test.h/m      # Phase 1 测试 [Phase 1] ✅
+│   ├── XCAudioCachePhase2Test.h/m      # Phase 2 测试 [Phase 2] ✅
+│   └── XCAudioCachePhase3Test.h/m      # Phase 3 测试 [Phase 3] ✅
+├── L2/
+│   └── XCTempCacheManager.h/m          # L2 层 [Phase 5] ⬜
+├── XCPersistentCacheManager.h/m        # L3 层 [Phase 4] ⬜
+├── XCAudioCacheManager.h/m             # 主管理器 [Phase 6] ⬜
+└── XCPreloadManager.h/m                # 预加载管理器 [Phase 7] ⬜
 ```
 
 ### 修改文件（2 个）
