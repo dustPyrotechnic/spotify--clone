@@ -105,6 +105,31 @@ Spotify - clone/
 ├── 9. 拦截缓存管理/              # 资源缓存
 │   └── XCResourceLoaderManager.h/m
 │
+├── 10. 内存缓存/                 # 旧内存缓存（将被音频缓存替代）
+│   └── XCMusicMemoryCache.h/m
+│
+├── 11. 音频缓存/                 # 新音频缓存系统 (Phase 1-6 已完成)
+│   ├── XCAudioCacheConst.h       # 常量定义
+│   ├── XCAudioCachePathUtils.h/m # 路径管理
+│   ├── XCAudioCacheManager.h/m   # Phase 6: 主管理器（三级缓存整合）
+│   ├── L1/                       # L1 层：NSCache 分段缓存
+│   │   ├── XCAudioSegmentInfo.h/m
+│   │   └── XCMemoryCacheManager.h/m
+│   ├── L2/                       # L2 层：临时完整歌曲缓存
+│   │   └── XCTempCacheManager.h/m
+│   ├── L3/                       # L3 层：永久完整歌曲缓存
+│   │   ├── XCAudioSongCacheInfo.h/m
+│   │   ├── XCCacheIndexManager.h/m
+│   │   └── XCPersistentCacheManager.h/m
+│   └── Tests/                    # 测试套件
+│       ├── XCAudioCachePhase1Test.h/m
+│       ├── XCAudioCachePhase2Test.h/m
+│       ├── XCAudioCachePhase3Test.h/m
+│       ├── XCAudioCachePhase4Test.h/m
+│       ├── XCAudioCachePhase5Test.h/m
+│       ├── XCAudioCachePhase6Test.h/m
+│       └── XCAudioCacheTestRunner.h/m
+│
 ├── 数据结构/                     # 数据模型
 │   ├── XC-YYAlbumData.h/m       # 专辑数据模型
 │   └── XC-YYSongData.h/m        # 歌曲数据模型
@@ -228,7 +253,16 @@ open "Spotify - clone.xcworkspace"
 - 播放列表管理
 - 当前播放歌曲追踪
 
-### 3. MainTabBarController
+### 3. XCAudioCacheManager (Phase 6 新增)
+音频缓存主管理器，三级缓存架构：
+- **L1 (NSCache)**: 内存分段缓存，512KB/段，100MB上限
+- **L2 (Tmp)**: 临时完整歌曲，位于 tmp/MusicTemp/
+- **L3 (Cache)**: 永久完整缓存，位于 Library/Caches/MusicCache/，1GB上限
+- 数据流转：L1 → L2 → L3（切歌时合并，验证后移动）
+- 支持 LRU 清理策略
+- 使用方式：`[XCAudioCacheManager sharedInstance]`
+
+### 4. MainTabBarController
 主 TabBar 控制器，包含 5 个 Tab：
 1. Home - 首页
 2. Music Warehouse - 音乐库
@@ -241,9 +275,23 @@ open "Spotify - clone.xcworkspace"
 ## Testing
 
 ### 当前状态
-- **无单元测试**: 项目中暂未配置 XCTest 单元测试
+- **音频缓存测试**: Phase 1-6 已完成，包含独立测试套件
+  - `XCAudioCacheTestRunner` 提供可视化测试菜单
+  - 每个 Phase 有独立的测试类（Phase1Test ~ Phase6Test）
 - **UI 调试**: 使用 LookinServer 进行 UI 层级调试
 - **手动测试**: 通过真机或模拟器进行功能验证
+
+### 音频缓存测试运行方式
+```objc
+// 运行单个 Phase 测试
+[XCAudioCachePhase6Test runAllTests];
+
+// 运行全部测试
+[XCAudioCacheTestRunner runAllPhaseTests];
+
+// 显示测试菜单
+[XCAudioCacheTestRunner showTestMenuFromViewController:self];
+```
 
 ### Debug Features
 - 控制台日志输出 (NSLog)
@@ -274,6 +322,8 @@ NSString *clientSecret = @"8e3f5...";  // 建议移到安全存储
 1. 搜索框变形机制未完成 (`MainTabBarController.m:76`)
 2. 图片下载多线程预取 (`HomePageViewController.m:253`)
 3. 音乐库、新发现、广播部分尚未实现 (空视图控制器)
+4. **音频缓存 Phase 7**: 预加载管理器 (`XCPreloadManager`)
+5. **音频缓存 Phase 8**: 与 `XCMusicPlayerModel` 集成
 
 ### 注意事项
 - 网易云 API 可能不稳定（项目注释："妈生网易云，真他妈难用"）

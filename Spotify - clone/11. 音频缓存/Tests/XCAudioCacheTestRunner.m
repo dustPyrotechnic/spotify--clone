@@ -8,6 +8,8 @@
 #import "XCAudioCachePhase2Test.h"
 #import "XCAudioCachePhase3Test.h"
 #import "XCAudioCachePhase4Test.h"
+#import "XCAudioCachePhase5Test.h"
+#import "XCAudioCachePhase6Test.h"
 #import "../L1/XCMemoryCacheManager.h"
 
 @implementation XCAudioCacheTestRunner
@@ -43,6 +45,20 @@
                                               style:UIAlertActionStyleDefault
                                             handler:^(UIAlertAction *action) {
         [self runPhase4Test];
+    }]];
+    
+    // Phase 5 测试
+    [alert addAction:[UIAlertAction actionWithTitle:@"运行 Phase 5 测试 (L2 临时缓存)"
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(UIAlertAction *action) {
+        [self runPhase5Test];
+    }]];
+    
+    // Phase 6 测试
+    [alert addAction:[UIAlertAction actionWithTitle:@"运行 Phase 6 测试 (缓存整合)"
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(UIAlertAction *action) {
+        [self runPhase6Test];
     }]];
     
     // 全部测试
@@ -84,6 +100,8 @@
     [self runPhase2Test];
     [self runPhase3Test];
     [self runPhase4Test];
+    [self runPhase5Test];
+    [self runPhase6Test];
     
     NSLog(@"\n========================================");
     NSLog(@"       音频缓存完整测试结束");
@@ -114,6 +132,18 @@
     NSLog(@"\n>>> 开始 Phase 4 测试...");
     [XCAudioCachePhase4Test runAllTests];
     NSLog(@"<<< Phase 4 测试结束\n");
+}
+
++ (void)runPhase5Test {
+    NSLog(@"\n>>> 开始 Phase 5 测试...");
+    [XCAudioCachePhase5Test runAllTests];
+    NSLog(@"<<< Phase 5 测试结束\n");
+}
+
++ (void)runPhase6Test {
+    NSLog(@"\n>>> 开始 Phase 6 测试...");
+    [XCAudioCachePhase6Test runAllTests];
+    NSLog(@"<<< Phase 6 测试结束\n");
 }
 
 + (void)quickValidation {

@@ -18,6 +18,8 @@
 
 #import "XCAudioCachePhase1Test.h"
 #import "XCAudioCachePhase2Test.h"
+#import "XCAudioCacheTestRunner.h"
+#import "XCAudioCachePhase6Test.h"
 
 @interface SceneDelegate ()
 
@@ -35,8 +37,8 @@
   MainTabBarController* mainTabBarController = [[MainTabBarController alloc] init];
   self.window.rootViewController = mainTabBarController;
   [self.window makeKeyAndVisible];
-  [XCAudioCachePhase1Test runAllTests];
-  [XCAudioCachePhase2Test runAllTests];
+  [XCAudioCacheTestRunner runAllPhaseTests];
+//  [XCAudioCachePhase6Test runAllTests];
 
 //  [self changeViewToDetailPage];
 

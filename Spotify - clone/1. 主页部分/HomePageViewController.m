@@ -96,18 +96,6 @@
     [btnArr addObject:btnItem];
 
   }
-  
-  // ====== 测试按钮 ======
-  #ifdef DEBUG
-  UIBarButtonItem *testBtn = [[UIBarButtonItem alloc] initWithTitle:@"测试"
-                                                               style:UIBarButtonItemStylePlain
-                                                              target:self
-                                                              action:@selector(showCacheTestMenu:)];
-  testBtn.tintColor = [UIColor systemRedColor];
-  [btnArr addObject:testBtn];
-  #endif
-  // ====================
-  
   // 全部
 
   // 音乐

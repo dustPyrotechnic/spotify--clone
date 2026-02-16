@@ -522,15 +522,17 @@ NSAssert([[XCCacheIndexManager sharedInstance] getSongCacheInfo:songId] != nil,
 
 ## Phase 5: L2 层 - 临时完整歌曲缓存
 **时间**: 第 9-10 天  
-**状态**: ⬜ 未开始
+**状态**: ✅ 已完成
 
-- [ ] 5.1 创建 `XCTempCacheManager.h/m` 单例
-- [ ] 5.2 实现 `writeTempSongData:forSongId:` 追加写入临时文件
-- [ ] 5.3 实现 `tempFileURLForSongId:` 获取临时文件 URL
-- [ ] 5.4 实现 `isTempFileComplete:expectedSize:` 验证完整性
-- [ ] 5.5 实现 `moveToPersistentCache:songId:` L2→L3 移动（验证完整后）
-- [ ] 5.6 实现 `deleteTempFileForSongId:` 删除临时文件
-- [ ] 5.7 实现定期清理过期临时文件（7 天）
+- [x] 5.1 创建 `XCTempCacheManager.h/m` 单例
+- [x] 5.2 实现 `writeTempSongData:forSongId:` 追加写入临时文件
+- [x] 5.3 实现 `tempFileURLForSongId:` 获取临时文件 URL
+- [x] 5.4 实现 `isTempFileComplete:expectedSize:` 验证完整性
+- [x] 5.5 实现 `moveToPersistentCache:songId:` L2→L3 移动
+- [x] 5.6 实现 `deleteTempFileForSongId:` 删除临时文件
+- [x] 5.7 实现定期清理过期临时文件（7 天）
+- [x] 5.8 实现 `confirmCompleteAndMoveToCache:expectedSize:` 验证后移动
+- [x] 5.9 实现 `fileHandleForWritingTempFile:` 支持持续写入
 
 **临时文件格式**: `{songId}.mp3.tmp`
 
@@ -577,20 +579,30 @@ NSAssert(moved == YES, @"移动失败");
 
 ## Phase 6: 缓存管理器整合
 **时间**: 第 11-13 天  
-**状态**: ⬜ 未开始
+**状态**: ✅ 已完成（测试全部通过）
 
-- [ ] 6.1 创建 `XCAudioCacheManager.h/m` 主管理器单例
-- [ ] 6.2 实现 `cachedURLForSongId:` 三级查询（L3→L2→返回 nil）
-- [ ] 6.3 实现 `storeSegment:forSongId:segmentIndex:` 写入 L1
-- [ ] 6.4 实现 `getSegmentForSongId:segmentIndex:` 查询分段（L1→网络）
-- [ ] 6.5 实现 `finalizeCurrentSong:` L1→L2 流转（切歌时）
+- [x] 6.1 创建 `XCAudioCacheManager.h/m` 主管理器单例
+- [x] 6.2 实现 `cachedURLForSongId:` 三级查询（L3→L2→返回 nil）
+- [x] 6.3 实现 `storeSegment:forSongId:segmentIndex:` 写入 L1
+- [x] 6.4 实现 `getSegmentForSongId:segmentIndex:` 查询分段（L1→网络）
+- [x] 6.5 实现 `finalizeCurrentSong:` L1→L2 流转（切歌时）
   - 将 L1 所有分段合并写入 L2 临时文件
-  - 清空 L1 分段
-- [ ] 6.6 实现 `confirmCompleteSong:expectedSize:` L2→L3 流转
+  - 保留 L1 分段（播放中）
+- [x] 6.6 实现 `confirmCompleteSong:expectedSize:` L2→L3 流转
   - 验证 L2 文件完整性
   - 移动到 L3
   - 更新索引
-- [ ] 6.7 实现 `clearAllCache` 清理所有缓存
+  - 清空 L1 分段
+- [x] 6.7 实现 `saveAndFinalizeSong:expectedSize:` 完整切歌流程
+- [x] 6.8 实现 `clearAllCache` 清理所有缓存
+- [x] 6.9 创建 `XCAudioCachePhase6Test.h/m` 测试类
+
+**测试结果**: 12 个测试用例全部通过
+- ✅ 单例模式、缓存状态查询、三级查询
+- ✅ L1 分段存储、L1→L2 流转、L2→L3 流转
+- ✅ 完整切歌流程、删除操作、优先级设置
+- ✅ 统计信息、索引查询、性能测试
+- ✅ 性能指标：L1 存储 ~0.03ms/分段，读取 ~0.02ms/分段
 
 **数据流转**:
 ```
@@ -658,10 +670,34 @@ NSInteger expectedSize = seg1.length + seg2.length + seg3.length;
 - [ ] 7.4 实现 `cancelPreloadForSongId:` 取消预加载
 - [ ] 7.5 实现并发控制（最多 1 个预加载任务）
 - [ ] 7.6 实现预加载进度回调
+- [ ] 7.7 创建 `XCAudioCachePhase7Test.h/m` 测试类
 
 **预加载策略**:
 - 下一首：预加载前 3 个分段（约 1.5MB，确保立即播放）
 - 继续预加载后续分段到 L1
+
+**接口设计**:
+```objc
+@interface XCPreloadManager : NSObject
++ (instancetype)sharedInstance;
+
+/// 开始预加载歌曲
+- (void)preloadSong:(NSString *)songId priority:(XCAudioPreloadPriority)priority;
+
+/// 取消预加载
+- (void)cancelPreloadForSongId:(NSString *)songId;
+
+/// 取消所有预加载
+- (void)cancelAllPreloads;
+
+/// 检查是否正在预加载
+- (BOOL)isPreloadingSong:(NSString *)songId;
+
+/// 获取预加载进度 0.0-1.0
+- (CGFloat)preloadProgressForSong:(NSString *)songId;
+
+@end
+```
 
 **验证手段**:
 ```objc
@@ -696,16 +732,75 @@ XCPreloadManager *manager = [XCPreloadManager sharedInstance];
 **状态**: ⬜ 未开始
 
 - [ ] 8.1 修改 `XCMusicPlayerModel.m`，引入 `XCAudioCacheManager`
-- [ ] 8.2 播放前检查 `cachedURLForSongId:`：
-  - 有 L3 缓存 → 直接用本地文件播放
-  - 有 L2 缓存 → 用 L2 临时文件播放
+- [ ] 8.2 修改 `playMusicWithId:` 方法，添加缓存检查：
+  - 有 L3/L2 缓存 → 直接用本地文件播放
   - 无缓存 → 网络播放，边下边存到 L1
-- [ ] 8.3 在 `playNextSong` 中：
-  - 调用 `finalizeCurrentSong:` 保存上一首到 L2
-  - 调用 `confirmCompleteSong:` 验证并移动到 L3
-- [ ] 8.4 播放进度 50% 时触发下一首预加载
-- [ ] 8.5 修改 `XCMusicMemoryCache.h/m`，保留接口，内部转发到新系统
-- [ ] 8.6 验证现有调用点兼容
+- [ ] 8.3 在 `playNextSong` 中集成切歌缓存逻辑：
+  - 调用 `saveAndFinalizeSong:` 保存上一首
+- [ ] 8.4 添加播放进度监听，50% 时触发预加载
+- [ ] 8.5 在 `XCMusicPlayerModel` 中添加预加载管理器引用
+- [ ] 8.6 修改 `XCMusicMemoryCache.m`，内部转发到 `XCAudioCacheManager`
+- [ ] 8.7 创建 `XCAudioCachePhase8Test.h/m` 集成测试
+
+**集成代码示例**:
+```objc
+// XCMusicPlayerModel.m
+#import "XCAudioCacheManager.h"
+#import "XCPreloadManager.h"
+
+- (void)playMusicWithId:(NSString *)songId {
+    XCAudioCacheManager *cacheManager = [XCAudioCacheManager sharedInstance];
+    
+    // 1. 检查缓存
+    NSURL *cachedURL = [cacheManager cachedURLForSongId:songId];
+    if (cachedURL) {
+        // 使用本地缓存播放
+        self.player = [[AVPlayer alloc] initWithURL:cachedURL];
+    } else {
+        // 使用网络 URL 播放
+        NSURL *networkURL = [self getNetworkURLForSong:songId];
+        self.player = [[AVPlayer alloc] initWithURL:networkURL];
+    }
+    
+    // 2. 设置当前优先歌曲（防止 L1 被清理）
+    [cacheManager setCurrentPrioritySong:songId];
+    
+    // 3. 开始播放并监听进度
+    [self.player play];
+    [self startProgressMonitoring];
+}
+
+- (void)playNextSong {
+    NSString *currentSongId = self.nowPlayingSong.songId;
+    XC_YYSongData *nextSong = [self getNextSong];
+    
+    // 1. 保存当前歌曲到缓存
+    if (currentSongId) {
+        [self.cacheManager saveAndFinalizeSong:currentSongId 
+                                  expectedSize:self.nowPlayingSong.size];
+    }
+    
+    // 2. 播放下一首
+    [self playMusicWithId:nextSong.songId];
+    
+    // 3. 预加载下下首
+    XC_YYSongData *nextNextSong = [self getNextNextSong];
+    if (nextNextSong) {
+        [[XCPreloadManager sharedInstance] preloadSong:nextNextSong.songId 
+                                              priority:XCAudioPreloadPriorityNormal];
+    }
+}
+
+- (void)onPlaybackProgress:(CGFloat)progress {
+    // 播放 50% 时预加载下一首
+    if (progress >= 0.5 && !self.hasTriggeredPreload) {
+        XC_YYSongData *nextSong = [self getNextSong];
+        [[XCPreloadManager sharedInstance] preloadSong:nextSong.songId 
+                                              priority:XCAudioPreloadPriorityHigh];
+        self.hasTriggeredPreload = YES;
+    }
+}
+```
 
 **验证手段**:
 ```objc
@@ -962,18 +1057,22 @@ AVPlayer 请求数据 Range: bytes=0-524287
 │   ├── XCAudioCachePhase3Test.h/m      # Phase 3 测试 [Phase 3] ✅
 │   └── XCAudioCachePhase4Test.h/m      # Phase 4 测试 [Phase 4] ✅
 ├── L2/
-│   └── XCTempCacheManager.h/m          # L2 层 [Phase 5] ⬜
-├── XCAudioCacheManager.h/m             # 主管理器 [Phase 6] ⬜
-└── XCPreloadManager.h/m                # 预加载管理器 [Phase 7] ⬜
+│   └── XCTempCacheManager.h/m          # L2 层 [Phase 5] ✅
+├── XCAudioCacheManager.h/m             # 主管理器 [Phase 6] ✅
+├── XCAudioCachePhase6Test.h/m          # Phase 6 测试 [Phase 6] ✅
+├── XCPreloadManager.h/m                # 预加载管理器 [Phase 7] ⬜
+├── XCAudioCachePhase7Test.h/m          # Phase 7 测试 [Phase 7] ⬜
+└── XCAudioCachePhase8Test.h/m          # Phase 8 集成测试 [Phase 8] ⬜
 ```
 
 ### 修改文件（2 个）
 ```
 5. TabBar附加视图，搜索部分/1. 音乐播放器/音乐播放详细页面/
-└── XCMusicPlayerModel.m                # 集成新缓存
+├── XCMusicPlayerModel.m                # [Phase 8] 集成新缓存系统
+└── XCMusicPlayerModel.h                # [Phase 8] 添加预加载管理器引用
 
 10. 内存缓存/
-└── XCMusicMemoryCache.m                # 转发调用
+└── XCMusicMemoryCache.m                # [Phase 8] 转发调用到新系统
 ```
 
 ---
