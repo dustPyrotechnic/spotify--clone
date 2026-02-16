@@ -281,19 +281,131 @@ NSAssert(notExists == NO, @"清理失败");
 
 ## Phase 4: L3 层 - 完整歌曲缓存
 **时间**: 第 7-8 天  
-**状态**: ⬜ 未开始
+**状态**: ✅ 已完成
 
-- [ ] 4.1 创建 `XCPersistentCacheManager.h/m` 单例
-- [ ] 4.2 实现 `writeCompleteSongData:forSongId:` 写入完整歌曲到 L3
-- [ ] 4.3 实现 `cachedURLForSongId:` 获取完整歌曲文件 URL
-- [ ] 4.4 实现 `hasCompleteCacheForSongId:` 检查是否有完整缓存
-- [ ] 4.5 实现 `deleteCacheForSongId:` 删除完整缓存
-- [ ] 4.6 实现 `totalCacheSize` 统计 L3 总大小
-- [ ] 4.7 实现 `cleanCacheToSize:` LRU 清理到指定大小
+### 核心问题：如何从 L1 分段合成完整文件？
+
+```
+L1 (NSCache) 中的分段数据:
+┌─────────┐  ┌─────────┐  ┌─────────┐
+│ song_0  │  │ song_1  │  │ song_2  │  ...
+│ 512KB   │  │ 512KB   │  │ 200KB   │
+└────┬────┘  └────┬────┘  └────┬────┘
+     │            │            │
+     └────────────┼────────────┘
+                  ▼
+           ┌──────────────┐
+           │   合并算法    │
+           │  (顺序拼接)   │
+           └──────┬───────┘
+                  ▼
+           ┌──────────────┐
+           │ 完整歌曲.mp3  │  ← L3 层存储
+           │  (1.2MB)     │     Library/Caches/MusicCache/
+           └──────────────┘
+```
+
+### 任务清单
+
+- [x] 4.1 创建 `XCPersistentCacheManager.h/m` 单例
+- [x] 4.2 实现 `writeCompleteSongData:forSongId:` 写入完整歌曲到 L3
+- [x] 4.3 实现 `cachedURLForSongId:` 获取完整歌曲文件 URL
+- [x] 4.4 实现 `hasCompleteCacheForSongId:` 检查是否有完整缓存
+- [x] 4.5 实现 `deleteCacheForSongId:` 删除完整缓存
+- [x] 4.6 实现 `totalCacheSize` 统计 L3 总大小
+- [x] 4.7 实现 `cleanCacheToSize:` LRU 清理到指定大小
+
+### Phase 3 扩展（为合并做准备）
+
+在 `XCMemoryCacheManager` 中新增方法：
+
+- [x] 4.8 实现 `mergeAllSegmentsForSongId:` 内存合并（返回 NSData）
+- [x] 4.9 实现 `writeMergedSegmentsToFile:forSongId:` 流式合并（推荐，省内存）
+  - 使用 `NSFileHandle` 逐段追加写入
+  - 避免大文件内存峰值
+
+### 合并算法详解
+
+**方案 A：内存合并（小文件 < 50MB）**
+```objc
+- (NSData *)mergeAllSegmentsForSongId:(NSString *)songId {
+    NSArray<XCAudioSegmentInfo *> *segments = [self getAllSegmentsForSongId:songId];
+    
+    // 计算总大小
+    NSInteger totalSize = 0;
+    for (XCAudioSegmentInfo *seg in segments) {
+        totalSize += seg.data.length;
+    }
+    
+    // 创建缓冲区，顺序追加
+    NSMutableData *mergedData = [NSMutableData dataWithCapacity:totalSize];
+    for (XCAudioSegmentInfo *seg in segments) {
+        [mergedData appendData:seg.data];
+    }
+    
+    return mergedData; // 完整文件数据
+}
+```
+
+**方案 B：流式合并（大文件推荐，内存友好）**
+```objc
+- (BOOL)writeMergedSegmentsToFile:(NSString *)filePath forSongId:(NSString *)songId {
+    NSArray<XCAudioSegmentInfo *> *segments = [self getAllSegmentsForSongId:songId];
+    
+    // 创建空文件
+    [[NSFileManager defaultManager] createFileAtPath:filePath contents:nil attributes:nil];
+    
+    // 使用 FileHandle 流式追加（内存只保持一段 512KB）
+    NSFileHandle *handle = [NSFileHandle fileHandleForWritingAtPath:filePath];
+    for (XCAudioSegmentInfo *seg in segments) {
+        [handle writeData:seg.data];  // 写一段到磁盘
+    }
+    [handle closeFile];
+    
+    return YES;
+}
+```
+
+### 数据流转流程（L1 → L3）
+
+```
+切歌时触发：
+┌─────────────────────────────────────────────────────┐
+│ 1. XCMusicPlayerModel 调用切歌                      │
+│    [player playNextSong]                            │
+└─────────────────────┬───────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────┐
+│ 2. 保存当前歌曲到 L2/L3                              │
+│    XCMemoryCacheManager:                            │
+│    - getAllSegmentsForSongId: (获取全部分段)         │
+│    - writeMergedSegmentsToFile: (合并写入文件)       │
+│    - clearSegmentsForSongId: (清空 L1)              │
+└─────────────────────┬───────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────┐
+│ 3. 验证完整性，决定存放位置                           │
+│    if (文件大小 == 歌曲总大小) {                     │
+│        移动到 L3 (Library/Caches/MusicCache/)       │
+│        XCCacheIndexManager addSongCacheInfo: (更新索引)
+│    } else {                                         │
+│        保留在 L2 (tmp/MusicTemp/)                   │
+│    }                                                │
+└─────────────────────────────────────────────────────┘
+```
 
 **注意**: L3 只存完整歌曲，不存分段！
 
+**新增测试文件**:
+```
+11. 音频缓存/
+├── L3/XCPersistentCacheManager.h/m     # L3 层 [Phase 4] ⬜
+└── Tests/XCAudioCachePhase4Test.h/m    # Phase 4 测试 [Phase 4] ⬜
+```
+
 **验证手段**:
+
+### A. L3 基础功能测试
 ```objc
 // 1. 完整歌曲写入测试
 XCPersistentCacheManager *manager = [XCPersistentCacheManager sharedInstance];
@@ -324,15 +436,87 @@ NSAssert(notExists == NO, @"删除失败");
 
 // 6. 容量统计测试
 // 写入多个文件，验证 totalCacheSize 返回正确
+```
 
-// 7. LRU清理测试
+### B. 分段合并测试（关键）
+```objc
+// 7. 分段合并测试 - 内存方式
+XCMemoryCacheManager *memoryManager = [XCMemoryCacheManager sharedInstance];
+
+// 模拟存储 3 个分段
+NSString *songId = @"merge_test_song";
+[memoryManager storeSegmentData:[@"Part1_" dataUsingEncoding:NSUTF8StringEncoding] 
+                     forSongId:songId segmentIndex:0];
+[memoryManager storeSegmentData:[@"Part2_" dataUsingEncoding:NSUTF8StringEncoding] 
+                     forSongId:songId segmentIndex:1];
+[memoryManager storeSegmentData:[@"Part3" dataUsingEncoding:NSUTF8StringEncoding] 
+                     forSongId:songId segmentIndex:2];
+
+// 合并
+NSData *merged = [memoryManager mergeAllSegmentsForSongId:songId];
+NSString *result = [[NSString alloc] initWithData:merged encoding:NSUTF8StringEncoding];
+NSAssert([result isEqualToString:@"Part1_Part2_Part3"], @"合并结果应该是 Part1_Part2_Part3");
+
+// 8. 分段合并测试 - 文件方式（推荐）
+NSString *tempPath = [[XCAudioCachePathUtils sharedInstance] tempFilePathForSongId:songId];
+BOOL written = [memoryManager writeMergedSegmentsToFile:tempPath forSongId:songId];
+NSAssert(written == YES, @"文件合并写入应该成功");
+
+// 验证文件内容
+NSData *fileData = [NSData dataWithContentsOfFile:tempPath];
+NSString *fileContent = [[NSString alloc] initWithData:fileData encoding:NSUTF8StringEncoding];
+NSAssert([fileContent isEqualToString:@"Part1_Part2_Part3"], @"文件内容应该正确");
+
+// 9. 大文件合并测试（验证内存不爆）
+// 创建 100 个 512KB 的分段（共 50MB）
+// 使用 writeMergedSegmentsToFile: 流式写入
+// 验证内存占用不超过 10MB
+```
+
+### C. L1 → L3 完整流程测试
+```objc
+// 10. 端到端流程测试
+NSString *songId = @"end_to_end_test";
+NSInteger expectedSize = 0;
+
+// 步骤 1: 模拟播放时存储分段到 L1
+for (NSInteger i = 0; i < 5; i++) {
+    NSData *segment = [[NSString stringWithFormat:@"Segment%ld", (long)i] 
+                       dataUsingEncoding:NSUTF8StringEncoding];
+    [[XCMemoryCacheManager sharedInstance] storeSegmentData:segment 
+                                                   forSongId:songId 
+                                                segmentIndex:i];
+    expectedSize += segment.length;
+}
+
+// 步骤 2: 模拟切歌，合并到 L3
+NSString *cachePath = [[XCAudioCachePathUtils sharedInstance] cacheFilePathForSongId:songId];
+[[XCMemoryCacheManager sharedInstance] writeMergedSegmentsToFile:cachePath forSongId:songId];
+
+// 步骤 3: 更新索引
+XCAudioSongCacheInfo *info = [[XCAudioSongCacheInfo alloc] initWithSongId:songId totalSize:expectedSize];
+[[XCCacheIndexManager sharedInstance] addSongCacheInfo:info];
+
+// 步骤 4: 清空 L1
+[[XCMemoryCacheManager sharedInstance] clearSegmentsForSongId:songId];
+
+// 步骤 5: 验证 L1 已清空，L3 存在
+NSAssert([[XCMemoryCacheManager sharedInstance] segmentCountForSongId:songId] == 0, 
+         @"L1 应该清空");
+NSAssert([[XCCacheIndexManager sharedInstance] getSongCacheInfo:songId] != nil, 
+         @"L3 索引应该存在");
+```
+
+### D. 其他测试
+```objc
+// 11. LRU清理测试
 // 设置较小容量限制，触发清理，验证旧文件被删除
 
-// 8. 关键规则验证：
+// 12. 关键规则验证：
 // 检查 Library/Caches/MusicCache/ 下只有 .mp3 完整文件，无分段文件
 ```
 
-**里程碑**: L3 完整歌曲缓存工作正常
+**里程碑**: L3 完整歌曲缓存工作正常，分段合并功能正常
 
 ---
 
@@ -706,12 +890,15 @@ AVPlayer 请求数据 Range: bytes=0-524287
     ▼
 1. 保存歌曲 A：
    L1 中 A 的所有分段 → 合并写入 L2 (A.mp3.tmp)
+   使用 XCMemoryCacheManager 的 writeMergedSegmentsToFile:forSongId: 方法
+   流式合并，顺序：seg_0 + seg_1 + seg_2 + ...
    清空 L1 中 A 的分段
     │
     ▼
 2. 验证歌曲 A：
-   如果 A 在 L2 的文件完整 → 移动到 L3 (A.mp3)
-   更新索引
+   检查 A.mp3.tmp 文件大小 == 歌曲总大小？
+   是 → 移动到 L3 (A.mp3)，更新索引
+   否 → 保留在 L2，下次继续下载
     │
     ▼
 3. 加载歌曲 B：
@@ -723,11 +910,25 @@ AVPlayer 请求数据 Range: bytes=0-524287
 
 ## 关键规则
 
+### 存储规则
 1. **L3 (Cache) 只存完整歌曲**，文件名为 `{songId}.mp3`
 2. **L2 (Tmp) 存临时完整歌曲**，文件名为 `{songId}.mp3.tmp`，可能不完整
 3. **L1 (NSCache) 只存分段**，Key 为 `{songId}_{segmentIndex}`
+
+### 数据流转规则
 4. **切歌时必须触发 L1→L2 流转**
-5. **确认完整后才能 L2→L3 流转**
+5. **分段合并算法**：`seg_0 + seg_1 + seg_2 + ...` 顺序拼接
+   - 使用 `writeMergedSegmentsToFile:forSongId:` 流式写入
+   - 内存占用保持 512KB（一段大小），不随文件大小增长
+6. **确认完整后才能 L2→L3 流转**
+   - 文件大小 == 歌曲总大小（HTTP Content-Length）
+   - 或音频文件头尾标记完整
+
+### 安全规则
+7. **合并过程中不能清空 L1**
+   - 先写入文件，验证成功后，再 clearSegmentsForSongId:
+8. **大文件优先使用流式合并**
+   - 避免 `mergeAllSegmentsForSongId:` 内存方式（可能导致内存峰值）
 
 ---
 
@@ -742,7 +943,7 @@ AVPlayer 请求数据 Range: bytes=0-524287
 
 ## 文件清单
 
-### 新建文件（13 个，Phase 1-3 已完成）
+### 新建文件（14 个，Phase 1-3 已完成）
 ```
 11. 音频缓存/
 ├── XCAudioCacheConst.h                 # 常量 [Phase 1] ✅
@@ -750,16 +951,18 @@ AVPlayer 请求数据 Range: bytes=0-524287
 ├── L1/
 │   ├── XCAudioSegmentInfo.h/m          # 分段信息 [Phase 1] ✅
 │   ├── XCMemoryCacheManager.h/m        # L1 层 [Phase 3] ✅
+│   └── XCMemoryCacheManager+Merge.h/m  # 分段合并扩展 [Phase 4] ✅
 ├── L3/
 │   ├── XCAudioSongCacheInfo.h/m        # 歌曲缓存信息 [Phase 1] ✅
-│   └── XCCacheIndexManager.h/m         # 索引管理器 [Phase 2] ✅
+│   ├── XCCacheIndexManager.h/m         # 索引管理器 [Phase 2] ✅
+│   └── XCPersistentCacheManager.h/m    # L3 层 [Phase 4] ✅
 ├── Tests/
 │   ├── XCAudioCachePhase1Test.h/m      # Phase 1 测试 [Phase 1] ✅
 │   ├── XCAudioCachePhase2Test.h/m      # Phase 2 测试 [Phase 2] ✅
-│   └── XCAudioCachePhase3Test.h/m      # Phase 3 测试 [Phase 3] ✅
+│   ├── XCAudioCachePhase3Test.h/m      # Phase 3 测试 [Phase 3] ✅
+│   └── XCAudioCachePhase4Test.h/m      # Phase 4 测试 [Phase 4] ✅
 ├── L2/
 │   └── XCTempCacheManager.h/m          # L2 层 [Phase 5] ⬜
-├── XCPersistentCacheManager.h/m        # L3 层 [Phase 4] ⬜
 ├── XCAudioCacheManager.h/m             # 主管理器 [Phase 6] ⬜
 └── XCPreloadManager.h/m                # 预加载管理器 [Phase 7] ⬜
 ```

@@ -236,10 +236,10 @@
   },
   "active": "db7d04ff0403477d",
   "lastOpenFiles": [
+    "AudioCacheDesign.md",
+    "AudioCacheImplementationPlan.md",
     "多层缓存架构设计方案_v2.md",
     "API_USAGE_DOCUMENTATION.md",
-    "AudioCacheImplementationPlan.md",
-    "AudioCacheDesign.md",
     "NSCache原理详解与缓存方案对比.md",
     "项目总结与建议.md",
     "项目深度分析报告_2026-02-08.md",

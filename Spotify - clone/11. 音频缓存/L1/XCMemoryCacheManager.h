@@ -86,4 +86,20 @@
 /// 清空所有缓存（包括当前优先歌曲）
 - (void)clearAllCache;
 
+#pragma mark - 分段合并（Phase 4）
+
+/// 将指定歌曲的所有分段合并为完整 NSData（内存方式）
+/// @param songId 歌曲唯一标识
+/// @return 合并后的完整数据，如果没有分段返回 nil
+/// @discussion ⚠️ 注意：大文件会占用大量内存，建议小文件（<50MB）使用
+/// @see writeMergedSegmentsToFile:forSongId: 大文件推荐使用流式合并
+- (NSData *)mergeAllSegmentsForSongId:(NSString *)songId;
+
+/// 将分段直接写入文件（流式合并，推荐）
+/// @param filePath 目标文件路径
+/// @param songId 歌曲唯一标识
+/// @return YES 表示写入成功
+/// @discussion 使用 NSFileHandle 流式追加写入，内存只保持一段（512KB），适合大文件
+- (BOOL)writeMergedSegmentsToFile:(NSString *)filePath forSongId:(NSString *)songId;
+
 @end

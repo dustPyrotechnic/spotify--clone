@@ -324,6 +324,82 @@
     NSLog(@"[MemoryCache] Cleared all cache");
 }
 
+#pragma mark - 分段合并（Phase 4）
+
+- (NSData *)mergeAllSegmentsForSongId:(NSString *)songId {
+    if (!songId || songId.length == 0) return nil;
+    
+    // 获取所有分段
+    NSArray<XCAudioSegmentInfo *> *segments = [self getAllSegmentsForSongId:songId];
+    if (segments.count == 0) return nil;
+    
+    // 计算总大小
+    NSInteger totalSize = 0;
+    for (XCAudioSegmentInfo *seg in segments) {
+        totalSize += seg.data.length;
+    }
+    
+    // 创建 NSMutableData 并追加
+    NSMutableData *mergedData = [NSMutableData dataWithCapacity:totalSize];
+    for (XCAudioSegmentInfo *seg in segments) {
+        [mergedData appendData:seg.data];
+    }
+    
+    NSLog(@"[MemoryCache] Merged %ld segments for %@, total size: %ld", 
+          (long)segments.count, songId, (long)totalSize);
+    
+    return mergedData;
+}
+
+- (BOOL)writeMergedSegmentsToFile:(NSString *)filePath forSongId:(NSString *)songId {
+    if (!filePath || !songId || songId.length == 0) return NO;
+    
+    // 获取所有分段
+    NSArray<XCAudioSegmentInfo *> *segments = [self getAllSegmentsForSongId:songId];
+    if (segments.count == 0) {
+        NSLog(@"[MemoryCache] No segments to merge for %@", songId);
+        return NO;
+    }
+    
+    // 创建空文件
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSString *dirPath = [filePath stringByDeletingLastPathComponent];
+    
+    NSError *error;
+    if (![fm fileExistsAtPath:dirPath]) {
+        [fm createDirectoryAtPath:dirPath
+      withIntermediateDirectories:YES
+                       attributes:nil
+                            error:&error];
+        if (error) {
+            NSLog(@"[MemoryCache] Failed to create directory: %@", error.localizedDescription);
+            return NO;
+        }
+    }
+    
+    [fm createFileAtPath:filePath contents:nil attributes:nil];
+    
+    // 使用 NSFileHandle 流式写入
+    NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingAtPath:filePath];
+    if (!fileHandle) {
+        NSLog(@"[MemoryCache] Failed to create file handle for %@", filePath);
+        return NO;
+    }
+    
+    NSInteger totalWritten = 0;
+    for (XCAudioSegmentInfo *seg in segments) {
+        [fileHandle writeData:seg.data];
+        totalWritten += seg.data.length;
+    }
+    
+    [fileHandle closeFile];
+    
+    NSLog(@"[MemoryCache] Written merged segments to file: %@, segments: %ld, total: %ld bytes", 
+          filePath, (long)segments.count, (long)totalWritten);
+    
+    return YES;
+}
+
 #pragma mark - NSCacheDelegate
 
 - (void)cache:(NSCache *)cache willEvictObject:(id)obj {
