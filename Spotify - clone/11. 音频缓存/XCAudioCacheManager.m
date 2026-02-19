@@ -2,8 +2,12 @@
 //  XCAudioCacheManager.m
 //  Spotify - clone
 //
-//  Phase 6: 音频缓存主管理器实现
+//  音频缓存主管理器实现
 //
+// 你可以注意到虽然我分了三个文件夹的文件
+// 但是其实最终看的还是这个
+// 感谢解耦
+// 阿门
 
 #import "XCAudioCacheManager.h"
 #import "XCMemoryCacheManager.h"
@@ -26,14 +30,15 @@
 @implementation XCAudioCacheManager
 
 #pragma mark - 单例
+// 不写复制相关操作了
 
 + (instancetype)sharedInstance {
-    static XCAudioCacheManager *instance = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        instance = [[self alloc] init];
-    });
-    return instance;
+  static XCAudioCacheManager *instance = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+      instance = [[self alloc] init];
+  });
+  return instance;
 }
 
 - (instancetype)init {
@@ -46,50 +51,49 @@
     }
     return self;
 }
-
 #pragma mark - 三级查询（L3 → L2 → nil）
 
 - (XCAudioFileCacheState)cacheStateForSongId:(NSString *)songId {
-    if (!songId || songId.length == 0) {
-        return XCAudioFileCacheStateNone;
-    }
-    
-    // 优先级：L3 > L2 > L1
-    if ([self.persistentManager hasCompleteCacheForSongId:songId]) {
-        return XCAudioFileCacheStateComplete;
-    }
-    
-    if ([self.tempManager hasTempFileForSongId:songId]) {
-        return XCAudioFileCacheStateTempFile;
-    }
-    
-    if ([self.memoryManager segmentCountForSongId:songId] > 0) {
-        return XCAudioFileCacheStateInMemory;
-    }
-    
-    return XCAudioFileCacheStateNone;
+  if (!songId || songId.length == 0) {
+      return XCAudioFileCacheStateNone;
+  }
+
+  // 优先级：L3 > L2 > L1
+  if ([self.persistentManager hasCompleteCacheForSongId:songId]) {
+      return XCAudioFileCacheStateComplete;
+  }
+
+  if ([self.tempManager hasTempFileForSongId:songId]) {
+      return XCAudioFileCacheStateTempFile;
+  }
+
+  if ([self.memoryManager segmentCountForSongId:songId] > 0) {
+      return XCAudioFileCacheStateInMemory;
+  }
+
+  return XCAudioFileCacheStateNone;
 }
 
 - (NSURL *)cachedURLForSongId:(NSString *)songId {
-    if (!songId || songId.length == 0) {
-        return nil;
-    }
-    
-    // 先查 L3
-    NSURL *url = [self.persistentManager cachedURLForSongId:songId];
-    if (url) {
-        // 更新播放时间用于 LRU
-        [self.indexManager updatePlayTimeForSongId:songId];
-        return url;
-    }
-    
-    // 再查 L2
-    url = [self.tempManager tempFileURLForSongId:songId];
-    if (url) {
-        return url;
-    }
-    
-    return nil;
+  if (!songId || songId.length == 0) {
+      return nil;
+  }
+
+  // 先查 L3
+  NSURL *url = [self.persistentManager cachedURLForSongId:songId];
+  if (url) {
+      // 更新播放时间用于 LRU
+      [self.indexManager updatePlayTimeForSongId:songId];
+      return url;
+  }
+
+  // 再查 L2
+  url = [self.tempManager tempFileURLForSongId:songId];
+  if (url) {
+      return url;
+  }
+
+  return nil;
 }
 
 - (NSString *)cachedFilePathForSongId:(NSString *)songId {

@@ -141,6 +141,16 @@
   //   make.right.equalTo(self.view).offset(-20);
   //   make.centerY.equalTo(self.view);
   // }];
+/*
+  XCNetworkManager *networkManager = [XCNetworkManager sharedInstance];
+   [networkManager findUrlOfSongWithId:@"2140776005" completion:^(NSURL * _Nullable songUrl) {
+       if (songUrl) {
+           NSLog(@"临时测试 获取到歌曲 URL: %@", songUrl);
+       } else {
+           NSLog(@"临时测试 获取歌曲 URL 失败");
+       }
+   }];
+*/
 
 }
 
@@ -279,6 +289,24 @@
 
 #pragma mark - 缓存测试
 #ifdef DEBUG
+- (void)addTestMenuButton {
+  // 在右上角添加测试按钮
+  UIBarButtonItem *testButton = [[UIBarButtonItem alloc] initWithTitle:@"测试"
+                                                                  style:UIBarButtonItemStylePlain
+                                                                 target:self
+                                                                 action:@selector(showCacheTestMenu:)];
+  testButton.tintColor = [UIColor systemOrangeColor];
+  
+  // 添加到右侧导航按钮
+  if (self.navigationItem.rightBarButtonItems) {
+    NSMutableArray *items = [self.navigationItem.rightBarButtonItems mutableCopy];
+    [items addObject:testButton];
+    self.navigationItem.rightBarButtonItems = items;
+  } else {
+    self.navigationItem.rightBarButtonItem = testButton;
+  }
+}
+
 - (void)showCacheTestMenu:(id)sender {
   [XCAudioCacheTestRunner showTestMenuFromViewController:self];
 }

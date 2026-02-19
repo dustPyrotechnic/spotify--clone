@@ -37,6 +37,9 @@
 /// @return 文件路径，无缓存时返回 nil
 - (NSString *)cachedFilePathForSongId:(NSString *)songId;
 
+
+
+
 /// 检查是否有 L3 完整缓存
 /// @param songId 歌曲唯一标识
 - (BOOL)hasCompleteCacheForSongId:(NSString *)songId;
@@ -49,7 +52,7 @@
 /// @param songId 歌曲唯一标识
 - (BOOL)hasMemoryCacheForSongId:(NSString *)songId;
 
-#pragma mark - L1 层操作（内存分段缓存）
+#pragma mark - L1层操作（内存分段）
 
 /// 存储分段数据到 L1
 /// @param data 分段二进制数据

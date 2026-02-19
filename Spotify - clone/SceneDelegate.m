@@ -37,7 +37,7 @@
   MainTabBarController* mainTabBarController = [[MainTabBarController alloc] init];
   self.window.rootViewController = mainTabBarController;
   [self.window makeKeyAndVisible];
-  [XCAudioCacheTestRunner runAllPhaseTests];
+//  [XCAudioCacheTestRunner runAllPhaseTests];
 //  [XCAudioCachePhase6Test runAllTests];
 
 //  [self changeViewToDetailPage];

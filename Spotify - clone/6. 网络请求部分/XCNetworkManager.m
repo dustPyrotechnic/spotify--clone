@@ -285,7 +285,10 @@ static XCNetworkManager *instance = nil;
         }
     } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
         if (completion) completion(nil);
+      NSLog(@"网络请求失败！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！");
+      NSLog(@"%@",error);
     }];
+  NSLog(@"网络请求完成");
 }
 
 #pragma mark - Token 属性实现
@@ -1013,12 +1016,5 @@ static XCNetworkManager *instance = nil;
     }
 }
 
-- (NSString *)testAPIGetStoredAccessToken {
-    return [UICKeyChainStore stringForKey:kAPIAccessTokenKey service:kAPIServiceName];
-}
-
-- (NSString *)testAPIGetStoredRefreshToken {
-    return [UICKeyChainStore stringForKey:kAPIRefreshTokenKey service:kAPIServiceName];
-}
 
 @end

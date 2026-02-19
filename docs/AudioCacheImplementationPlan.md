@@ -662,15 +662,20 @@ NSInteger expectedSize = seg1.length + seg2.length + seg3.length;
 
 ## Phase 7: 预加载机制
 **时间**: 第 14-15 天  
-**状态**: ⬜ 未开始
+**状态**: ✅ 已完成
 
-- [ ] 7.1 创建 `XCPreloadManager.h/m` 预加载管理器
-- [ ] 7.2 实现 `preloadSong:songId:` 开始预加载
-- [ ] 7.3 实现分段预加载策略（优先加载前 3 个分段确保立即播放）
-- [ ] 7.4 实现 `cancelPreloadForSongId:` 取消预加载
-- [ ] 7.5 实现并发控制（最多 1 个预加载任务）
-- [ ] 7.6 实现预加载进度回调
-- [ ] 7.7 创建 `XCAudioCachePhase7Test.h/m` 测试类
+- [x] 7.1 创建 `XCPreloadManager.h/m` 预加载管理器
+- [x] 7.2 实现 `preloadSong:songId:` 开始预加载
+- [x] 7.3 实现分段预加载策略（优先加载前 3 个分段确保立即播放）
+- [x] 7.4 实现 `cancelPreloadForSongId:` 取消预加载
+- [x] 7.5 实现并发控制（最多 1 个预加载任务）
+- [x] 7.6 实现预加载进度回调
+- [x] 7.7 创建 `XCAudioCachePhase7Test.h/m` 测试类
+
+**新增测试**: 13 个测试用例覆盖所有功能
+- ✅ 单例模式、预加载启动和状态查询、取消预加载
+- ✅ 优先级队列、进度回调、完成回调、并发控制
+- ✅ 批量预加载、分段限制、暂停恢复、统计信息、下一首预加载
 
 **预加载策略**:
 - 下一首：预加载前 3 个分段（约 1.5MB，确保立即播放）
@@ -1060,8 +1065,8 @@ AVPlayer 请求数据 Range: bytes=0-524287
 │   └── XCTempCacheManager.h/m          # L2 层 [Phase 5] ✅
 ├── XCAudioCacheManager.h/m             # 主管理器 [Phase 6] ✅
 ├── XCAudioCachePhase6Test.h/m          # Phase 6 测试 [Phase 6] ✅
-├── XCPreloadManager.h/m                # 预加载管理器 [Phase 7] ⬜
-├── XCAudioCachePhase7Test.h/m          # Phase 7 测试 [Phase 7] ⬜
+├── XCPreloadManager.h/m                # 预加载管理器 [Phase 7] ✅
+├── XCAudioCachePhase7Test.h/m          # Phase 7 测试 [Phase 7] ✅
 └── XCAudioCachePhase8Test.h/m          # Phase 8 集成测试 [Phase 8] ⬜
 ```
 
