@@ -1,7 +1,7 @@
 # AGENTS.md - Spotify Clone iOS App
 
 > This file contains essential information for AI coding agents working on this project.
-> Last updated: 2026-02-07
+> Last updated: 2026-02-19
 
 ---
 
@@ -108,7 +108,7 @@ Spotify - clone/
 ├── 10. 内存缓存/                 # 旧内存缓存（将被音频缓存替代）
 │   └── XCMusicMemoryCache.h/m
 │
-├── 11. 音频缓存/                 # 新音频缓存系统 (Phase 1-6 已完成)
+├── 11. 音频缓存/                 # 新音频缓存系统 (Phase 1-8 已完成)
 │   ├── XCAudioCacheConst.h       # 常量定义
 │   ├── XCAudioCachePathUtils.h/m # 路径管理
 │   ├── XCAudioCacheManager.h/m   # Phase 6: 主管理器（三级缓存整合）
@@ -128,6 +128,8 @@ Spotify - clone/
 │       ├── XCAudioCachePhase4Test.h/m
 │       ├── XCAudioCachePhase5Test.h/m
 │       ├── XCAudioCachePhase6Test.h/m
+│       ├── XCAudioCachePhase7Test.h/m  # Phase 7: 预加载测试
+│       ├── XCAudioCachePhase8Test.h/m  # Phase 8: 集成测试
 │       └── XCAudioCacheTestRunner.h/m
 │
 ├── 数据结构/                     # 数据模型
@@ -252,9 +254,21 @@ open "Spotify - clone.xcworkspace"
 - `AVPlayer` 实例管理
 - 播放列表管理
 - 当前播放歌曲追踪
+- 播放控制（播放/暂停/上一首/下一首）
+- 进度调整（seekToTime）
+- 锁屏播放控制集成
 
-### 3. XCAudioCacheManager (Phase 6 新增)
-音频缓存主管理器，三级缓存架构：
+### 3. XCResourceLoaderManager (Phase B)
+资源加载拦截器，实现边下边播：
+- 拦截 AVPlayer 的资源加载请求
+- 优先从 L1 分段缓存响应
+- 未命中时发起网络 Range 请求
+- 下载数据实时写入 L1 缓存
+- 支持拖动进度条快速跳转
+- 使用方式：`[XCResourceLoaderManager sharedInstance]`
+
+### 4. XCAudioCacheManager (Phase 6-8)
+音频缓存主管理器，三级缓存架构，已与播放器集成：
 - **L1 (NSCache)**: 内存分段缓存，512KB/段，100MB上限
 - **L2 (Tmp)**: 临时完整歌曲，位于 tmp/MusicTemp/
 - **L3 (Cache)**: 永久完整缓存，位于 Library/Caches/MusicCache/，1GB上限
@@ -262,7 +276,7 @@ open "Spotify - clone.xcworkspace"
 - 支持 LRU 清理策略
 - 使用方式：`[XCAudioCacheManager sharedInstance]`
 
-### 4. MainTabBarController
+### 5. MainTabBarController
 主 TabBar 控制器，包含 5 个 Tab：
 1. Home - 首页
 2. Music Warehouse - 音乐库
@@ -275,9 +289,10 @@ open "Spotify - clone.xcworkspace"
 ## Testing
 
 ### 当前状态
-- **音频缓存测试**: Phase 1-6 已完成，包含独立测试套件
+- **音频缓存测试**: Phase 1-8 已完成，包含独立测试套件
   - `XCAudioCacheTestRunner` 提供可视化测试菜单
-  - 每个 Phase 有独立的测试类（Phase1Test ~ Phase6Test）
+  - 每个 Phase 有独立的测试类（Phase1Test ~ Phase8Test）
+  - Phase 8 集成测试验证播放器与新缓存系统的集成
 - **UI 调试**: 使用 LookinServer 进行 UI 层级调试
 - **手动测试**: 通过真机或模拟器进行功能验证
 
@@ -322,8 +337,10 @@ NSString *clientSecret = @"8e3f5...";  // 建议移到安全存储
 1. 搜索框变形机制未完成 (`MainTabBarController.m:76`)
 2. 图片下载多线程预取 (`HomePageViewController.m:253`)
 3. 音乐库、新发现、广播部分尚未实现 (空视图控制器)
-4. **音频缓存 Phase 7**: 预加载管理器 (`XCPreloadManager`)
-5. **音频缓存 Phase 8**: 与 `XCMusicPlayerModel` 集成
+4. ~~音频缓存 Phase 7~~: ✅ 已完成 (`XCPreloadManager`)
+5. ~~音频缓存 Phase 8~~: ✅ 已完成 (与 `XCMusicPlayerModel` 集成)
+6. ~~进度条拖动播放 Phase A~~: ✅ 已完成 (UISlider 拖动跳转 + 锁屏进度控制)
+7. ~~分段播放 Phase B~~: ✅ 已完成 (ResourceLoader 边下边播 + L1 缓存)
 
 ### 注意事项
 - 网易云 API 可能不稳定（项目注释："妈生网易云，真他妈难用"）

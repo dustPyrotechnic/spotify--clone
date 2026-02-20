@@ -66,15 +66,16 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _taskQueue = [NSMutableArray array];
-        _activeTasks = [NSMutableArray array];
-        _taskDictionary = [NSMutableDictionary dictionary];
-        _queueLock = [[NSLock alloc] init];
-        _maxConcurrentTasks = 1;  // 默认最多 1 个并发
-        _preloadSegmentLimit = 0; // 默认不限制分段数
+        // 【任务队列初始化】创建优先级队列和活跃任务列表
+        _taskQueue = [NSMutableArray array];      // 等待执行的任务队列
+        _activeTasks = [NSMutableArray array];    // 正在执行的任务
+        _taskDictionary = [NSMutableDictionary dictionary]; // songId -> task 映射
+        _queueLock = [[NSLock alloc] init];       // 队列访问锁
+        _maxConcurrentTasks = 1;  // 【默认配置】单并发，避免影响当前播放
+        _preloadSegmentLimit = 0; // 【默认配置】0 表示不限制分段数
         _paused = NO;
         
-        // 创建 URLSession
+        // 【URLSession 配置】独立 session 用于预加载，不影响主播放器
         NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
         config.timeoutIntervalForRequest = 30.0;
         config.timeoutIntervalForResource = 300.0;
@@ -100,24 +101,25 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
            priority:(XCAudioPreloadPriority)priority
       progressBlock:(XCPreloadProgressBlock)progressBlock
     completionBlock:(XCPreloadCompletionBlock)completionBlock {
+    // 【参数校验】songId 无效记录错误并返回
     if (!songId || songId.length == 0) {
         NSLog(@"[PreloadManager] 错误: songId 为空");
         return;
     }
     
+    // 【线程安全】加锁保护队列操作
     [self.queueLock lock];
     
-    // 检查是否已有该任务
+    // 【重复检查】检查是否已有该任务在队列或执行中
     XCPreloadTask *existingTask = self.taskDictionary[songId];
     if (existingTask) {
-        // 更新优先级
+        // 【优先级提升】新优先级更高时更新并重新排序
         if (priority > existingTask.priority) {
             existingTask.priority = priority;
-            // 重新排序队列
             [self sortTaskQueue];
             NSLog(@"[PreloadManager] 更新 %@ 优先级为 %ld", songId, (long)priority);
         }
-        // 更新回调
+        // 【回调更新】合并新的回调块
         if (progressBlock) {
             existingTask.progressBlock = progressBlock;
         }
@@ -128,7 +130,7 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
         return;
     }
     
-    // 检查是否已有 L3 完整缓存
+    // 【缓存检查】如已有 L3 完整缓存，直接回调成功并跳过
     XCAudioCacheManager *cacheManager = [XCAudioCacheManager sharedInstance];
     if ([cacheManager hasCompleteCacheForSongId:songId]) {
         NSLog(@"[PreloadManager] %@ 已有 L3 完整缓存，跳过预加载", songId);
@@ -141,16 +143,16 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
         return;
     }
     
-    // 创建新任务
+    // 【创建任务】新建预加载任务并设置回调
     XCPreloadTask *task = [[XCPreloadTask alloc] initWithSongId:songId priority:priority];
     task.progressBlock = progressBlock;
     task.completionBlock = completionBlock;
     
-    // 加入队列和字典
+    // 【加入队列】添加到队列和字典以便快速查找
     [self.taskQueue addObject:task];
     self.taskDictionary[songId] = task;
     
-    // 按优先级排序
+    // 【优先级排序】确保高优先级任务在前
     [self sortTaskQueue];
     
     NSLog(@"[PreloadManager] 添加预加载任务: %@, 优先级: %ld, 队列长度: %lu",
@@ -158,7 +160,7 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
     
     [self.queueLock unlock];
     
-    // 尝试启动下一个任务
+    // 【启动检查】尝试启动下一个可执行任务
     [self processNextTask];
 }
 
@@ -291,19 +293,19 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
 - (void)processNextTask {
     [self.queueLock lock];
     
-    // 检查是否暂停
+    // 【状态检查】暂停状态下不启动新任务
     if (self.isPaused) {
         [self.queueLock unlock];
         return;
     }
     
-    // 检查并发限制
+    // 【并发控制】达到最大并发数时等待
     if (self.activeTasks.count >= (NSUInteger)self.maxConcurrentTasks) {
         [self.queueLock unlock];
         return;
     }
     
-    // 获取下一个任务（优先级最高的）
+    // 【任务选取】从队列中选取优先级最高的可执行任务
     XCPreloadTask *nextTask = nil;
     for (XCPreloadTask *task in self.taskQueue) {
         if (!task.isExecuting && !task.isCancelled && !task.isCompleted) {
@@ -317,14 +319,14 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
         return;
     }
     
-    // 标记为执行中
+    // 【状态变更】标记为执行中并移动到活跃列表
     nextTask.executing = YES;
     [self.taskQueue removeObject:nextTask];
     [self.activeTasks addObject:nextTask];
     
     [self.queueLock unlock];
     
-    // 开始预加载
+    // 【启动预加载】开始执行下载任务
     [self startPreloadTask:nextTask];
 }
 
@@ -348,15 +350,15 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
 
 /// 预加载歌曲（分段方式）
 - (void)preloadSongWithURL:(NSURL *)url task:(XCPreloadTask *)task {
-    // 策略：先加载前 3 个分段（约 1.5MB），确保立即播放
-    // 然后再根据优先级决定是否继续加载
+    // 【加载策略】先加载前 3 个分段（约 1.5MB），确保可立即播放
+    // 高优先级任务可继续加载更多分段
     
-    NSInteger initialSegments = 3;  // 优先加载前 3 段
+    NSInteger initialSegments = 3;  // 【预加载策略】优先加载前 3 段
     if (self.preloadSegmentLimit > 0 && self.preloadSegmentLimit < initialSegments) {
         initialSegments = self.preloadSegmentLimit;
     }
     
-    // 开始加载第一段
+    // 【开始加载】从第一段开始顺序加载
     [self loadSegmentForTask:task
                          url:url
                segmentIndex:0
@@ -371,19 +373,20 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
                  priority:(XCAudioPreloadPriority)priority
              totalSegments:(NSInteger)totalSegments {
     
+    // 【取消检查】任务被取消时立即结束
     if (task.isCancelled) {
         [self handleTaskCompletion:task success:NO error:nil];
         return;
     }
     
-    // 检查是否已达到分段限制
+    // 【限制检查】达到分段限制时标记完成
     if (self.preloadSegmentLimit > 0 && segmentIndex >= self.preloadSegmentLimit) {
         NSLog(@"[PreloadManager] %@ 已达到分段限制 %ld", task.songId, (long)self.preloadSegmentLimit);
         [self handleTaskCompletion:task success:YES error:nil];
         return;
     }
     
-    // 检查是否已有该分段缓存
+    // 【缓存检查】如该分段已存在则跳过并继续下一段
     XCAudioCacheManager *cacheManager = [XCAudioCacheManager sharedInstance];
     if ([cacheManager hasSegmentForSongId:task.songId segmentIndex:segmentIndex]) {
         NSLog(@"[PreloadManager] %@ 分段 %ld 已存在，跳过", task.songId, (long)segmentIndex);
@@ -396,7 +399,7 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
             });
         }
         
-        // 继续加载下一段
+        // 【递归加载】继续加载下一段
         [self loadSegmentForTask:task
                              url:url
                    segmentIndex:segmentIndex + 1
@@ -405,7 +408,7 @@ typedef NS_ENUM(NSInteger, XCPreloadErrorCode) {
         return;
     }
     
-    // 创建 Range 请求
+    // 【Range 请求】创建分段下载请求，每段 512KB
     NSInteger offset = segmentIndex * kAudioSegmentSize;
     NSString *rangeHeader = [NSString stringWithFormat:@"bytes=%ld-%ld",
                             (long)offset, (long)(offset + kAudioSegmentSize - 1)];

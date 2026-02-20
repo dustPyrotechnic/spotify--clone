@@ -29,6 +29,9 @@ extern NSString * const XCMusicPlayerPlaybackStateDidChangeNotification;
 /// 播放状态（YES: 正在播放, NO: 暂停）
 @property (nonatomic, assign, readonly) BOOL isPlaying;
 
+// Phase 8: 预加载触发标记（内部使用）
+@property (nonatomic, assign) BOOL hasTriggeredPreload;
+
 + (instancetype)sharedInstance;
 
 // 测试方法

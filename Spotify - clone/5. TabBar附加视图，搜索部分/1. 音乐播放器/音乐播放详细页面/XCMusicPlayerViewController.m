@@ -11,9 +11,15 @@
 
 #import <Masonry/Masonry.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <AVFoundation/AVFoundation.h>
 
 @interface XCMusicPlayerViewController ()
-
+/// 拖动进度条前是否正在播放
+@property (nonatomic, assign) BOOL wasPlayingBeforeSeek;
+/// 是否正在拖动进度条
+@property (nonatomic, assign) BOOL isSeeking;
+/// 进度条更新定时器
+@property (nonatomic, strong) NSTimer *progressTimer;
 @end
 
 @implementation XCMusicPlayerViewController
@@ -30,9 +36,13 @@
     self.mainView = [[XCMusicPlayerView alloc] init];
     NSLog(@"[MusicPlayerVC] 主视图初始化完成: %@", self.mainView);
     
-    // 设置响应
+    // 设置播放按钮响应
     [self.mainView.playOrStopButton addTarget:self action:@selector(handleTouchDownButton) forControlEvents:UIControlEventTouchDown];
     [self.mainView.playOrStopButton addTarget:self action:@selector(pressPlayOrStopButton) forControlEvents:UIControlEventTouchUpInside];
+    
+    // 设置进度条事件监听（Phase A：进度条拖动播放）
+    [self setupSliderEventHandlers];
+    
     [self.view addSubview:self.mainView];
 
     // 使用Masonry设置主视图约束
@@ -50,6 +60,10 @@
         [self.mainView configureWithSong:self.musicPlayerModel.nowPlayingSong];
         // 同步播放按钮状态（使用 Model 维护的状态）
         [self updatePlayButtonState:self.musicPlayerModel.isPlaying];
+        // 如果正在播放，启动进度条定时器
+        if (self.musicPlayerModel.isPlaying) {
+            [self startProgressTimer];
+        }
     } else {
         NSLog(@"[MusicPlayerVC] 没有正在播放的歌曲");
     }
@@ -59,6 +73,8 @@
 - (void)dealloc {
     // 移除通知监听（防止内存泄漏）
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    // 停止定时器
+    [self stopProgressTimer];
 }
 
 #pragma mark - 通知注册
@@ -101,6 +117,13 @@
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [self updatePlayButtonState:isPlaying];
+        
+        // 根据播放状态启停进度条定时器
+        if (isPlaying) {
+            [self startProgressTimer];
+        } else {
+            [self stopProgressTimer];
+        }
     });
 }
 
@@ -134,9 +157,177 @@
     // 直接调用 Model 的方法，由 Model 发送通知更新 UI
     if (self.musicPlayerModel.isPlaying) {
         [self.musicPlayerModel pauseMusic];
+        [self stopProgressTimer];
     } else {
         [self.musicPlayerModel playMusic];
+        [self startProgressTimer];
     }
+}
+
+#pragma mark - 进度条拖动功能（Phase A）
+
+/// 设置进度条事件监听
+- (void)setupSliderEventHandlers {
+    // 手指触碰滑块 - 开始拖动
+    [self.mainView.mainSlider addTarget:self 
+                                 action:@selector(sliderTouchDown:) 
+                       forControlEvents:UIControlEventTouchDown];
+    
+    // 滑块值变化 - 拖动中
+    [self.mainView.mainSlider addTarget:self 
+                                 action:@selector(sliderValueChanged:) 
+                       forControlEvents:UIControlEventValueChanged];
+    
+    // 手指松开滑块 - 结束拖动
+    [self.mainView.mainSlider addTarget:self 
+                                 action:@selector(sliderTouchUp:) 
+                       forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside];
+    
+    NSLog(@"[MusicPlayerVC] 进度条事件监听已设置");
+}
+
+/// TouchDown - 暂停并记录状态
+- (void)sliderTouchDown:(UISlider *)slider {
+    NSLog(@"[MusicPlayerVC] 👇 用户开始拖动进度条");
+    
+    // 如果正在调整中（快速多次点击），先取消之前的
+    if (self.isSeeking) {
+        NSLog(@"[MusicPlayerVC] 检测到正在拖动中，重置状态");
+    }
+    
+    // 记录当前播放状态
+    self.isSeeking = YES;
+    self.wasPlayingBeforeSeek = self.musicPlayerModel.player.rate > 0;
+    
+    // 如果正在播放，暂停
+    if (self.wasPlayingBeforeSeek) {
+        NSLog(@"[MusicPlayerVC] 拖动前正在播放，先暂停");
+        [self.musicPlayerModel pauseMusic];
+    }
+    
+    // 停止进度条定时器（防止拖动时进度条自己跳动）
+    [self stopProgressTimer];
+    
+    // 触感反馈
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback impactOccurred];
+}
+
+/// ValueChanged - 拖动中更新显示
+- (void)sliderValueChanged:(UISlider *)slider {
+    // 将 slider 的 0.0~1.0 转换为实际时间（秒）
+    CGFloat progress = slider.value;  // 0.0 ~ 1.0
+    NSTimeInterval totalDuration = self.musicPlayerModel.nowPlayingSong.duration / 1000.0;
+    NSTimeInterval targetTime = progress * totalDuration;
+    
+    // 格式化时间显示
+    NSString *timeText = [self formatTime:targetTime];
+    NSLog(@"[MusicPlayerVC] 🎚️ 拖动中: %@ (%.1fs)", timeText, targetTime);
+    
+    // TODO: 如有时间标签，可在此更新
+    // self.mainView.currentTimeLabel.text = timeText;
+}
+
+/// TouchUp - 执行跳转并恢复
+- (void)sliderTouchUp:(UISlider *)slider {
+    NSLog(@"[MusicPlayerVC] 👆 用户松开进度条");
+    
+    // 计算目标时间
+    CGFloat progress = slider.value;
+    NSTimeInterval totalDuration = self.musicPlayerModel.nowPlayingSong.duration / 1000.0;
+    NSTimeInterval targetTime = progress * totalDuration;
+    
+    NSLog(@"[MusicPlayerVC] 准备跳转到: %.1fs", targetTime);
+    
+    // 执行跳转（seek）
+    [self seekToTime:targetTime];
+    
+    // 如果之前在播放，恢复播放
+    if (self.wasPlayingBeforeSeek) {
+        NSLog(@"[MusicPlayerVC] 恢复播放");
+        [self.musicPlayerModel playMusic];
+        [self startProgressTimer];
+    }
+    
+    // 重置状态
+    self.isSeeking = NO;
+    
+    // 触感反馈
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback impactOccurred];
+}
+
+/// 跳转到指定时间
+- (void)seekToTime:(NSTimeInterval)time {
+    // 检查有效性
+    if (time < 0) time = 0;
+    NSTimeInterval duration = self.musicPlayerModel.nowPlayingSong.duration / 1000.0;
+    if (time > duration) time = duration;
+    
+    CMTime targetCMTime = CMTimeMakeWithSeconds(time, NSEC_PER_SEC);
+    
+    __weak typeof(self) weakSelf = self;
+    [self.musicPlayerModel.player seekToTime:targetCMTime 
+                           completionHandler:^(BOOL finished) {
+        if (finished) {
+            NSLog(@"[PlayerVC] ✅ 跳转完成: %.1fs", time);
+            // 跳转完成后更新锁屏信息
+            [weakSelf.musicPlayerModel updateLockScreenInfo];
+        } else {
+            NSLog(@"[PlayerVC] ⚠️ 跳转被取消");
+        }
+    }];
+}
+
+/// 格式化时间显示
+- (NSString *)formatTime:(NSTimeInterval)timeInterval {
+    NSInteger minutes = (NSInteger)timeInterval / 60;
+    NSInteger seconds = (NSInteger)timeInterval % 60;
+    return [NSString stringWithFormat:@"%02ld:%02ld", (long)minutes, (long)seconds];
+}
+
+#pragma mark - 进度条自动更新
+
+/// 开始定时更新滑块位置
+- (void)startProgressTimer {
+    [self stopProgressTimer];
+    
+    // 每 0.5 秒更新一次
+    self.progressTimer = [NSTimer scheduledTimerWithTimeInterval:0.5
+                                                          target:self
+                                                        selector:@selector(updateSliderProgress)
+                                                        userInfo:nil
+                                                         repeats:YES];
+    NSLog(@"[MusicPlayerVC] 启动进度条定时器");
+}
+
+/// 停止定时更新
+- (void)stopProgressTimer {
+    if (self.progressTimer) {
+        [self.progressTimer invalidate];
+        self.progressTimer = nil;
+        NSLog(@"[MusicPlayerVC] 停止进度条定时器");
+    }
+}
+
+/// 更新滑块位置
+- (void)updateSliderProgress {
+    // 拖动中不更新（避免冲突）
+    if (self.isSeeking) return;
+    
+    // 检查有效性
+    if (!self.musicPlayerModel.player || !self.musicPlayerModel.nowPlayingSong) return;
+    
+    NSTimeInterval currentTime = CMTimeGetSeconds(self.musicPlayerModel.player.currentTime);
+    NSTimeInterval duration = self.musicPlayerModel.nowPlayingSong.duration / 1000.0;
+    
+    // 处理无效值
+    if (isnan(currentTime) || currentTime < 0) currentTime = 0;
+    if (duration <= 0) return;
+    
+    // 更新滑块位置
+    CGFloat progress = currentTime / duration;
+    self.mainView.mainSlider.value = progress;
 }
 
 /*

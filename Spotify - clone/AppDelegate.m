@@ -7,7 +7,7 @@
 
 #import "AppDelegate.h"
 #import "11. 音频缓存/Tests/XCAudioCacheTestRunner.h"
-#import "11. 音频缓存/Tests/XCAudioCachePhase7Test.h"
+#import "XCMemoryCacheManager.h"
 
 @interface AppDelegate ()
 
@@ -18,7 +18,7 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
   // Override point for customization after application launch.
-  [XCAudioCachePhase7Test testRealSongPreload];
+  [[XCMemoryCacheManager sharedInstance] clearAllCache];
   return YES;
 }
 

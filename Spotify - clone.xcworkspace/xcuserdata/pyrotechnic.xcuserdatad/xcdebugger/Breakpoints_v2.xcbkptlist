@@ -276,7 +276,7 @@
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
             uuid = "5C31B9B8-7F11-4E5E-8196-D211D2E9120E"
-            shouldBeEnabled = "Yes"
+            shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "Spotify - clone/6. &#x7f51;&#x7edc;&#x8bf7;&#x6c42;&#x90e8;&#x5206;/XCNetworkManager.m"

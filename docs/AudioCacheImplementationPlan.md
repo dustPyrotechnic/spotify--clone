@@ -734,18 +734,65 @@ XCPreloadManager *manager = [XCPreloadManager sharedInstance];
 
 ## Phase 8: 系统集成
 **时间**: 第 16-18 天  
-**状态**: ⬜ 未开始
+**状态**: ✅ 已完成
 
-- [ ] 8.1 修改 `XCMusicPlayerModel.m`，引入 `XCAudioCacheManager`
-- [ ] 8.2 修改 `playMusicWithId:` 方法，添加缓存检查：
+- [x] 8.1 修改 `XCMusicPlayerModel.m`，引入 `XCAudioCacheManager`
+- [x] 8.2 修改 `playMusicWithId:` 方法，添加缓存检查：
   - 有 L3/L2 缓存 → 直接用本地文件播放
   - 无缓存 → 网络播放，边下边存到 L1
-- [ ] 8.3 在 `playNextSong` 中集成切歌缓存逻辑：
+- [x] 8.3 在 `playNextSong` 中集成切歌缓存逻辑：
   - 调用 `saveAndFinalizeSong:` 保存上一首
-- [ ] 8.4 添加播放进度监听，50% 时触发预加载
-- [ ] 8.5 在 `XCMusicPlayerModel` 中添加预加载管理器引用
-- [ ] 8.6 修改 `XCMusicMemoryCache.m`，内部转发到 `XCAudioCacheManager`
-- [ ] 8.7 创建 `XCAudioCachePhase8Test.h/m` 集成测试
+- [x] 8.4 添加播放进度监听，50% 时触发预加载
+- [x] 8.5 在 `XCMusicPlayerModel` 中添加预加载管理器引用
+- [x] 8.6 保留 `XCMusicMemoryCache.m` 旧代码，取消调用（用户要求）
+- [x] 8.7 创建 `XCAudioCachePhase8Test.h/m` 集成测试
+
+**集成代码示例**:
+```objc
+// XCMusicPlayerModel.m - playMusicWithId:
+- (void)playMusicWithId:(NSString *)songId {
+    // Phase 8: 使用新的三级缓存系统查询 (L3 -> L2 -> 网络)
+    XCAudioCacheManager *cacheManager = [XCAudioCacheManager sharedInstance];
+    NSURL *cachedURL = [cacheManager cachedURLForSongId:songId];
+    
+    if (cachedURL) {
+        // 命中缓存，使用本地播放
+        [self playWithURL:cachedURL songId:songId];
+        [cacheManager setCurrentPrioritySong:songId];
+        return;
+    }
+    
+    // 无缓存，使用网络播放...
+}
+
+// playNextSong - 切歌时保存缓存
+- (void)playNextSong {
+    // Phase 8: 保存当前歌曲到缓存（L1 -> L2 -> L3 流转）
+    NSString *currentSongId = self.nowPlayingSong.songId;
+    if (currentSongId) {
+        [[XCAudioCacheManager sharedInstance] saveAndFinalizeSong:currentSongId 
+                                                     expectedSize:self.nowPlayingSong.size];
+    }
+    // ... 切换下一首
+}
+
+// 50% 进度触发预加载
+- (void)checkPlaybackProgressForPreload {
+    if (progress >= 0.5 && !self.hasTriggeredPreload) {
+        self.hasTriggeredPreload = YES;
+        [self preloadNextSong];
+    }
+}
+```
+
+**测试验证**:
+```objc
+// 运行 Phase 8 集成测试
+[XCAudioCachePhase8Test runAllTests];
+
+// 或通过测试运行器
+[XCAudioCacheTestRunner runPhase8Test];
+```
 
 **集成代码示例**:
 ```objc
@@ -836,208 +883,317 @@ XCPreloadManager *manager = [XCPreloadManager sharedInstance];
 // 6. 接口兼容测试
 // 确保现有调用 XCMusicMemoryCache 的代码正常工作
 ```
+## Phase 9: AVAssetResourceLoader 集成（关键）
+**时间**: 第 19-22 天  
+**状态**: ⬜ 待实施
 
-**里程碑**: 播放器集成完成
+### 问题背景
+当前 Phase 8 集成存在关键问题：播放器直接使用 `AVPlayerItem playerItemWithURL:` 创建播放器，导致 `AVPlayer` 直接管理网络下载，**无法拦截音频数据流**。因此：
+- ❌ 无法将下载的分段存入 L1 内存缓存
+- ❌ 无法触发 L1 → L2 → L3 的数据流转
+- ✅ 只能查询已有的 L2/L3 缓存
 
----
+### 解决方案
+使用 `AVAssetResourceLoaderDelegate` 拦截播放器的数据请求，实现边下边缓存。
 
-## Phase 9: 资源加载器增强（可选）
-**时间**: 第 19-21 天  
-**状态**: ⬜ 未开始
+### 实施任务
 
-- [ ] 9.1 增强 `XCResourceLoaderManager`
-- [ ] 9.2 实现 Range 请求解析
-- [ ] 9.3 查询 L1 分段缓存响应请求
-- [ ] 9.4 未命中时网络请求，同时写入 L1
-- [ ] 9.5 组装分段数据响应播放器
+#### 9.1 改造播放器创建方式
+- [ ] 修改 `XCMusicPlayerModel.m` 的 `playWithURL:songId:` 方法
+- [ ] 将网络 URL 转换为自定义 scheme（如 `streaming://`）
+- [ ] 使用 `AVURLAsset` 创建播放资源
+- [ ] 设置 `resourceLoader` 的 delegate 为 `XCResourceLoaderManager`
 
-**验证手段**:
+#### 9.2 完善 XCResourceLoaderManager
+- [ ] 实现 `resourceLoader:shouldWaitForLoadingOfRequestedResource:` 完整逻辑
+- [ ] 实现请求 Range 解析（从 `AVAssetResourceLoadingRequest` 提取）
+- [ ] 实现三级查询逻辑：L1 → L3 → 网络
+- [ ] 实现网络请求发起（使用 `NSURLSession`）
+- [ ] 实现数据回调和缓存存储
+
+#### 9.3 实现数据流转核心逻辑
+- [ ] **L1 查询**: 根据请求 Range 计算分段索引，查询 NSCache
+- [ ] **L3 查询**: 从本地文件读取对应 Range 数据
+- [ ] **网络请求**: 发起 Range 请求获取数据
+- [ ] **数据存储**: 将下载数据存入 L1（512KB 分段）
+- [ ] **数据返回**: 通过 `loadingRequest.dataRequest respondWithData:` 返回给播放器
+
+#### 9.4 边界情况处理
+- [ ] 处理多个并发请求（播放器可能同时请求多个分段）
+- [ ] 处理请求取消（`didCancelLoadingRequest:`）
+- [ ] 处理网络错误和重试
+- [ ] 处理部分缓存命中（部分数据在缓存，部分需要网络）
+
+#### 9.5 创建 Phase 9 测试
+- [ ] 创建 `XCAudioCachePhase9Test.h/m`
+- [ ] 测试资源加载器拦截功能
+- [ ] 测试 L1 缓存写入（播放后检查内存缓存）
+- [ ] 测试完整数据流转（播放 → L1 → 切歌 → L2）
+
+### 核心代码设计
+
+#### 播放器改造（XCMusicPlayerModel.m）
 ```objc
-// 1. Range解析测试
-// 输入 "bytes=0-524287"，验证解析出 offset=0, length=524288
-// 输入 "bytes=524288-1048575"，验证解析正确
-
-// 2. 缓存命中测试
-// 预置 L1 分段
-// 验证：直接返回缓存数据，无网络请求
-
-// 3. 缓存未命中测试
-// 无缓存时
-// 验证：发起网络请求，数据写入 L1，同时返回给播放器
-
-// 4. 分段组装测试
-// 请求跨越多个分段的范围
-// 验证：正确组装多个分段数据响应
+- (void)playWithURL:(NSURL *)url songId:(NSString *)songId {
+    NSLog(@"[PlayerModel] 创建播放器: %@", songId);
+    
+    // 【关键改造】将 URL scheme 改为自定义，触发资源加载器拦截
+    NSURLComponents *components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+    components.scheme = @"streaming";  // 自定义 scheme
+    NSURL *customURL = components.URL;
+    
+    // 创建 AVURLAsset 并设置 resourceLoader delegate
+    AVURLAsset *asset = [AVURLAsset URLAssetWithURL:customURL options:nil];
+    [asset.resourceLoader setDelegate:[XCResourceLoaderManager sharedInstance] 
+                                queue:dispatch_get_main_queue()];
+    
+    AVPlayerItem *playerItem = [AVPlayerItem playerItemWithAsset:asset];
+    
+    if (!self.player) {
+        self.player = [AVPlayer playerWithPlayerItem:playerItem];
+    } else {
+        [self.player replaceCurrentItemWithPlayerItem:playerItem];
+    }
+    
+    [self.player play];
+    _isPlaying = YES;
+    
+    // 设置当前优先歌曲（内存紧张时保留此歌缓存）
+    [[XCAudioCacheManager sharedInstance] setCurrentPrioritySong:songId];
+    
+    [self updateLockScreenInfo];
+    [self startLockScreenProgressTimer];
+    [self addProgressObserverForPreload];
+}
 ```
 
-**里程碑**: 边下边播功能完整（可选）
-
----
-
-## Phase 10: 测试与优化
-**时间**: 第 22-24 天  
-**状态**: ⬜ 未开始
-
-- [ ] 10.1 单元测试：分段存储、合并、流转
-- [ ] 10.2 集成测试：三级缓存查询、切歌流转
-- [ ] 10.3 性能测试：各层读取耗时
-- [ ] 10.4 边界测试：快速切歌、大文件、磁盘满
-- [ ] 10.5 稳定性测试：连续播放、内存警告
-- [ ] 10.6 性能优化
-
-**性能目标**:
-- L1 读取 < 1ms
-- L2/L3 读取 < 20ms
-- 切歌响应 < 100ms
-
-**验证手段**:
+#### 资源加载器核心逻辑（XCResourceLoaderManager.m）
 ```objc
-// 1. 单元测试执行
-// 运行所有单元测试，确保 100% 通过
+@interface XCResourceLoaderManager ()
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSURLSessionDataTask *> *activeTasks;
+@property (nonatomic, strong) dispatch_queue_t loaderQueue;
+@end
 
-// 2. 性能测试
-// L1读取 1000 次，平均耗时 < 1ms
-// L2/L3读取 100 次，平均耗时 < 20ms
-// 切歌操作 50 次，平均耗时 < 100ms
+@implementation XCResourceLoaderManager
 
-// 3. 弱网测试
-// 使用 Network Link Conditioner 模拟 3G 网络
-// 验证播放流畅，缓存正常工作
++ (instancetype)sharedInstance {
+    static XCResourceLoaderManager *instance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        instance = [[self alloc] init];
+    });
+    return instance;
+}
 
-// 4. 快速切歌测试
-// 1 秒内连续切换 10 次
-// 验证无崩溃，状态正确
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _activeTasks = [NSMutableDictionary dictionary];
+        _loaderQueue = dispatch_queue_create("com.spotifyclone.resourceloader", DISPATCH_QUEUE_CONCURRENT);
+    }
+    return self;
+}
 
-// 5. 大文件测试
-// 测试 20MB+ 歌曲
-// 验证分段存储正常，无内存问题
+#pragma mark - AVAssetResourceLoaderDelegate
 
-// 6. 内存警告测试
-// 模拟内存警告
-// 验证 L1 被清理，播放继续正常
+- (BOOL)resourceLoader:(AVAssetResourceLoader *)resourceLoader 
+shouldWaitForLoadingOfRequestedResource:(AVAssetResourceLoadingRequest *)loadingRequest {
+    
+    NSURL *customURL = loadingRequest.request.URL;
+    NSString *songId = [self songIdFromCustomURL:customURL];
+    NSRange requestRange = [self requestRangeFromLoadingRequest:loadingRequest];
+    
+    NSLog(@"[ResourceLoader] 拦截请求: %@", songId);
+    
+    dispatch_async(self.loaderQueue, ^{
+        [self handleLoadingRequest:loadingRequest songId:songId range:requestRange];
+    });
+    
+    return YES;
+}
 
-// 7. 磁盘满测试
-// 模拟磁盘满场景
-// 验证优雅降级，不崩溃
+- (void)handleLoadingRequest:(AVAssetResourceLoadingRequest *)loadingRequest
+                      songId:(NSString *)songId
+                       range:(NSRange)range {
+    
+    XCAudioCacheManager *cacheManager = [XCAudioCacheManager sharedInstance];
+    
+    // 1. 【查询 L1 内存缓存】
+    NSInteger startSegment = range.location / kAudioSegmentSize;
+    NSInteger endSegment = NSMaxRange(range) / kAudioSegmentSize;
+    
+    NSMutableData *responseData = [NSMutableData data];
+    BOOL allDataFromCache = YES;
+    
+    for (NSInteger segIndex = startSegment; segIndex <= endSegment; segIndex++) {
+        NSData *segmentData = [cacheManager getSegmentForSongId:songId segmentIndex:segIndex];
+        if (segmentData) {
+            [responseData appendData:segmentData];
+        } else {
+            allDataFromCache = NO;
+            break;
+        }
+    }
+    
+    // 2. 【L1 完全命中】直接返回
+    if (allDataFromCache && responseData.length > 0) {
+        NSLog(@"[ResourceLoader] L1 缓存命中: %@", songId);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [loadingRequest.dataRequest respondWithData:responseData];
+            [loadingRequest finishLoading];
+        });
+        return;
+    }
+    
+    // 3. 【查询 L3 完整缓存】
+    NSString *cachePath = [cacheManager cachedFilePathForSongId:songId];
+    if (cachePath) {
+        NSData *fileData = [NSData dataWithContentsOfFile:cachePath options:NSDataReadingMappedIfSafe error:nil];
+        if (fileData && fileData.length >= NSMaxRange(range)) {
+            NSData *subData = [fileData subdataWithRange:range];
+            NSLog(@"[ResourceLoader] L3 缓存命中: %@", songId);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [loadingRequest.dataRequest respondWithData:subData];
+                [loadingRequest finishLoading];
+            });
+            return;
+        }
+    }
+    
+    // 4. 【发起网络请求】
+    [self loadFromNetwork:loadingRequest songId:songId range:range];
+}
 
-// 8. 长时间播放测试
-// 连续播放 50 首歌曲
-// 验证无内存泄漏，缓存管理正常
+- (void)loadFromNetwork:(AVAssetResourceLoadingRequest *)loadingRequest
+                 songId:(NSString *)songId
+                  range:(NSRange)range {
+    
+    NSURL *originalURL = [self originalURLFromCustomURL:loadingRequest.request.URL];
+    
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:originalURL];
+    NSString *rangeHeader = [NSString stringWithFormat:@"bytes=%lu-%lu", 
+                            (unsigned long)range.location, 
+                            (unsigned long)(NSMaxRange(range) - 1)];
+    [request setValue:rangeHeader forHTTPHeaderField:@"Range"];
+    
+    NSLog(@"[ResourceLoader] 网络请求: %@", rangeHeader);
+    
+    NSURLSessionDataTask *task = [[NSURLSession sharedSession] 
+        dataTaskWithRequest:request 
+        completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            
+            if (error) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [loadingRequest finishLoadingWithError:error];
+                });
+                return;
+            }
+            
+            if (data) {
+                // 【关键】存入 L1 缓存
+                [self storeDataToL1:data songId:songId range:range];
+                
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [loadingRequest.dataRequest respondWithData:data];
+                    [loadingRequest finishLoading];
+                });
+            }
+        }];
+    
+    self.activeTasks[songId] = task;
+    [task resume];
+}
+
+- (void)storeDataToL1:(NSData *)data songId:(NSString *)songId range:(NSRange)range {
+    NSInteger segmentSize = kAudioSegmentSize;
+    NSInteger offset = 0;
+    
+    while (offset < data.length) {
+        NSInteger remaining = data.length - offset;
+        NSInteger currentSegmentSize = MIN(segmentSize, remaining);
+        NSData *segmentData = [data subdataWithRange:NSMakeRange(offset, currentSegmentSize)];
+        NSInteger segmentIndex = (range.location + offset) / segmentSize;
+        
+        [[XCAudioCacheManager sharedInstance] storeSegment:segmentData 
+                                                 forSongId:songId 
+                                              segmentIndex:segmentIndex];
+        offset += currentSegmentSize;
+    }
+}
+
+- (void)resourceLoader:(AVAssetResourceLoader *)resourceLoader 
+didCancelLoadingRequest:(AVAssetResourceLoadingRequest *)loadingRequest {
+    NSURL *url = loadingRequest.request.URL;
+    NSString *songId = [self songIdFromCustomURL:url];
+    NSURLSessionDataTask *task = self.activeTasks[songId];
+    if (task) {
+        [task cancel];
+        [self.activeTasks removeObjectForKey:songId];
+    }
+}
+
+#pragma mark - 工具方法
+
+- (NSString *)songIdFromCustomURL:(NSURL *)customURL {
+    return customURL.lastPathComponent;
+}
+
+- (NSURL *)originalURLFromCustomURL:(NSURL *)customURL {
+    NSURLComponents *components = [NSURLComponents componentsWithURL:customURL resolvingAgainstBaseURL:NO];
+    components.scheme = @"https";
+    return components.URL;
+}
+
+- (NSRange)requestRangeFromLoadingRequest:(AVAssetResourceLoadingRequest *)loadingRequest {
+    AVAssetResourceLoadingDataRequest *dataRequest = loadingRequest.dataRequest;
+    return NSMakeRange((NSUInteger)dataRequest.requestedOffset, (NSUInteger)dataRequest.requestedLength);
+}
+
+@end
 ```
 
-**里程碑**: 测试通过
+### 数据流对比
 
----
-
-## Phase 11: 文档与收尾
-**时间**: 第 25 天  
-**状态**: ⬜ 未开始
-
-- [ ] 11.1 头文件注释
-- [ ] 11.2 API 使用文档
-- [ ] 11.3 代码审查
-- [ ] 11.4 清理旧代码
-- [ ] 11.5 更新 AGENTS.md
-
-**里程碑**: 项目收尾
-
----
-
-## 核心工作流程
-
-### 1. 播放时查找缓存
+**当前（无资源加载器）**:
 ```
-播放请求 songId
-    │
-    ▼
-检查 L3 (Cache/{songId}.mp3)
-    │
-    ├── 存在 → 直接播放
-    │
-    └── 不存在
-         ▼
-    检查 L2 (Tmp/{songId}.mp3.tmp)
-         │
-         ├── 存在 → 播放临时文件
-         │
-         └── 不存在 → 网络播放，边下边存到 L1
+AVPlayer → 直接网络下载 → 播放
+                ↓
+           ❌ 无法拦截 → ❌ 无法缓存到 L1
 ```
 
-### 2. 边下边存流程
+**改造后（有资源加载器）**:
 ```
-AVPlayer 请求数据 Range: bytes=0-524287
-    │
-    ▼
-检查 L1 NSCache "{songId}_0"
-    │
-    ├── 存在 → 直接返回
-    │
-    └── 不存在
-         ▼
-    网络请求该分段
-         │
-         ▼
-    写入 L1 NSCache "{songId}_0"
-         │
-         ▼
-    返回数据给播放器
+AVPlayer → 资源加载器拦截 → 查 L1 → 有？→ 直接返回
+                                ↓ 无
+                              查 L3 → 有？→ 读取返回
+                                ↓ 无
+                              网络请求 → 返回数据
+                                ↓
+                              存入 L1（512KB 分段）
 ```
 
-### 3. 切歌时数据流转
-```
-切歌：当前 A → 下一首 B
-    │
-    ▼
-1. 保存歌曲 A：
-   L1 中 A 的所有分段 → 合并写入 L2 (A.mp3.tmp)
-   使用 XCMemoryCacheManager 的 writeMergedSegmentsToFile:forSongId: 方法
-   流式合并，顺序：seg_0 + seg_1 + seg_2 + ...
-   清空 L1 中 A 的分段
-    │
-    ▼
-2. 验证歌曲 A：
-   检查 A.mp3.tmp 文件大小 == 歌曲总大小？
-   是 → 移动到 L3 (A.mp3)，更新索引
-   否 → 保留在 L2，下次继续下载
-    │
-    ▼
-3. 加载歌曲 B：
-   检查 L3 → L2 → 网络
-   开始播放 B，同时预加载下下首 C
+### 验证手段
+
+```objc
+// 1. 拦截测试 - 播放歌曲，验证日志输出
+// 预期: [ResourceLoader] 拦截请求: xxx
+
+// 2. L1 缓存写入测试
+NSInteger count = [[XCAudioCacheManager sharedInstance] segmentCountForSongId:@"test_song"];
+// 预期: count > 0
+
+// 3. 缓存命中测试 - 再次播放已缓存歌曲
+// 预期日志: [ResourceLoader] L3 缓存命中
 ```
 
----
+### 风险与注意事项
 
-## 关键规则
+1. **线程安全**: Delegate 回调可能在任意线程
+2. **请求并发**: 播放器可能同时发起多个 Range 请求
+3. **内存峰值**: 依赖 L1 的 100MB 上限自动清理
+4. **取消处理**: seek 或切歌时及时停止网络下载
 
-### 存储规则
-1. **L3 (Cache) 只存完整歌曲**，文件名为 `{songId}.mp3`
-2. **L2 (Tmp) 存临时完整歌曲**，文件名为 `{songId}.mp3.tmp`，可能不完整
-3. **L1 (NSCache) 只存分段**，Key 为 `{songId}_{segmentIndex}`
-
-### 数据流转规则
-4. **切歌时必须触发 L1→L2 流转**
-5. **分段合并算法**：`seg_0 + seg_1 + seg_2 + ...` 顺序拼接
-   - 使用 `writeMergedSegmentsToFile:forSongId:` 流式写入
-   - 内存占用保持 512KB（一段大小），不随文件大小增长
-6. **确认完整后才能 L2→L3 流转**
-   - 文件大小 == 歌曲总大小（HTTP Content-Length）
-   - 或音频文件头尾标记完整
-
-### 安全规则
-7. **合并过程中不能清空 L1**
-   - 先写入文件，验证成功后，再 clearSegmentsForSongId:
-8. **大文件优先使用流式合并**
-   - 避免 `mergeAllSegmentsForSongId:` 内存方式（可能导致内存峰值）
-
----
-
-## 每日检查清单
-
-- [ ] 今日任务完成
-- [ ] 代码可编译
-- [ ] L3 只存完整歌曲
-- [ ] 内存占用正常
+**里程碑**: 播放器数据流被拦截，L1 缓存正常写入，完整缓存链路打通
 
 ---
 
@@ -1067,21 +1223,69 @@ AVPlayer 请求数据 Range: bytes=0-524287
 ├── XCAudioCachePhase6Test.h/m          # Phase 6 测试 [Phase 6] ✅
 ├── XCPreloadManager.h/m                # 预加载管理器 [Phase 7] ✅
 ├── XCAudioCachePhase7Test.h/m          # Phase 7 测试 [Phase 7] ✅
-└── XCAudioCachePhase8Test.h/m          # Phase 8 集成测试 [Phase 8] ⬜
+├── XCAudioCachePhase8Test.h/m          # Phase 8 集成测试 [Phase 8] ✅
+└── XCAudioCacheTestRunner.h/m          # 测试运行器（已更新）
 ```
 
-### 修改文件（2 个）
+### 修改文件（3 个）
 ```
 5. TabBar附加视图，搜索部分/1. 音乐播放器/音乐播放详细页面/
 ├── XCMusicPlayerModel.m                # [Phase 8] 集成新缓存系统
+│                                         [Phase 9] 改造为 AVURLAsset 方式
 └── XCMusicPlayerModel.h                # [Phase 8] 添加预加载管理器引用
+
+9. 拦截缓存管理/
+└── XCResourceLoaderManager.m           # [Phase 9] 实现完整的资源加载逻辑
 
 10. 内存缓存/
 └── XCMusicMemoryCache.m                # [Phase 8] 转发调用到新系统
 ```
 
+### Phase 9 新增文件（1 个）
+```
+11. 音频缓存/
+```
+
 ---
 
-**计划版本**: 3.0  
-**更新日期**: 2026-02-12  
-**预计工期**: 25 天
+└── Tests/
+    └── XCAudioCachePhase9Test.h/m      # Phase 9 资源加载器测试 [Phase 9] ⬜
+```
+
+---
+
+## 关键规则
+
+### 存储规则
+1. **L3 (Cache) 只存完整歌曲**，文件名为 `{songId}.mp3`
+2. **L2 (Tmp) 存临时完整歌曲**，文件名为 `{songId}.mp3.tmp`，可能不完整
+3. **L1 (NSCache) 只存分段**，Key 为 `{songId}_{segmentIndex}`
+
+### 数据流转规则
+4. **播放时必须通过资源加载器拦截数据**（Phase 9 关键）
+5. **切歌时触发 L1→L2 流转**
+6. **分段合并算法**：`seg_0 + seg_1 + seg_2 + ...` 顺序拼接
+   - 使用 `writeMergedSegmentsToFile:forSongId:` 流式写入
+   - 内存占用保持 512KB（一段大小）
+7. **确认完整后才能 L2→L3 流转**
+
+### 安全规则
+8. **合并过程中不能清空 L1**
+   - 先写入文件，验证成功后，再 clearSegmentsForSongId:
+9. **大文件优先使用流式合并**
+   - 避免 `mergeAllSegmentsForSongId:` 内存方式
+
+---
+
+## 每日检查清单
+
+- [ ] 今日任务完成
+- [ ] 代码可编译
+- [ ] L3 只存完整歌曲
+- [ ] 内存占用正常
+
+---
+
+**计划版本**: 4.0  
+**更新日期**: 2026-02-20  
+**预计工期**: 28 天

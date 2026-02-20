@@ -9,7 +9,12 @@
 
 #import "XCNetworkManager.h"
 #import "XCResourceLoaderManager.h"
-#import "XCMusicMemoryCache.h"
+// Phase 8: 新缓存系统（已集成）
+#import "XCAudioCacheManager.h"
+#import "XCPreloadManager.h"
+
+// 旧缓存系统（保留但暂不调用）
+// #import "XCMusicMemoryCache.h"
 
 #import <UICKeyChainStore/UICKeyChainStore.h>
 #import <AFNetworking/AFNetworking.h>
@@ -274,12 +279,30 @@ static XCMusicPlayerModel *instance = nil;
 // 监听回调
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
     if ([keyPath isEqualToString:@"status"]) {
-        if (self.player.currentItem.status == AVPlayerItemStatusFailed) {
-          // 这行日志能告诉你底层到底是由于权限、网络还是解码失败
-          NSLog(@"[Player] 播放失败详细原因: %@", self.player.currentItem.error.localizedDescription);
-          NSLog(@"[Player] 错误代码: %ld", (long)self.player.currentItem.error.code);
-        } else {
-          NSLog(@"[Player] 播放成功");
+        AVPlayerItem *playerItem = object;
+        
+        if (playerItem.status == AVPlayerItemStatusReadyToPlay) {
+            NSLog(@"[PlayerModel] ✅ 资源加载完成，开始播放");
+            
+            // 移除监听
+            [playerItem removeObserver:self forKeyPath:@"status"];
+            
+            // 开始播放
+            [self.player play];
+            _isPlaying = YES;
+            [self updateLockScreenInfo];
+            [self startLockScreenProgressTimer];
+            
+            // Phase 8: 添加进度观察，用于 50% 触发预加载
+            [self addProgressObserverForPreload];
+            
+        } else if (playerItem.status == AVPlayerItemStatusFailed) {
+            // 这行日志能告诉你底层到底是由于权限、网络还是解码失败
+            NSLog(@"[PlayerModel] ❌ 播放失败: %@", playerItem.error.localizedDescription);
+            NSLog(@"[PlayerModel] 错误代码: %ld", (long)playerItem.error.code);
+            
+            // 移除监听
+            [playerItem removeObserver:self forKeyPath:@"status"];
         }
     }
 }
@@ -314,6 +337,7 @@ static XCMusicPlayerModel *instance = nil;
 }
 
 // 根据指定id，播放音乐
+// Phase 8: 已集成新的三级缓存系统 (L1/L2/L3)
 - (void)playMusicWithId:(NSString *)songId {
     if (!songId.length) {
         NSLog(@"[PlayerModel] playMusicWithId: songId 为空");
@@ -322,16 +346,24 @@ static XCMusicPlayerModel *instance = nil;
     
     NSLog(@"[PlayerModel] 请求播放歌曲: %@", songId);
     
-    // 1. 先检查内存缓存
-    NSURL *localURL = [[XCMusicMemoryCache sharedInstance] localURLForSongId:songId];
-    if (localURL) {
-        NSLog(@"[PlayerModel] 命中内存缓存，使用本地播放");
-        [self playWithURL:localURL songId:songId];
-        [[XCMusicMemoryCache sharedInstance] setCurrentPlayingSong:songId];
+    // Phase 8: 重置预加载触发标记
+    self.hasTriggeredPreload = NO;
+    
+    // Phase 8: 使用新的三级缓存系统查询 (L3 -> L2 -> 网络)
+    __block XCAudioCacheManager *cacheManager = [XCAudioCacheManager sharedInstance];
+    NSURL *cachedURL = [cacheManager cachedURLForSongId:songId];
+    
+    if (cachedURL) {
+        XCAudioFileCacheState cacheState = [cacheManager cacheStateForSongId:songId];
+        NSString *cacheLevel = (cacheState == XCAudioFileCacheStateComplete) ? @"L3" : @"L2";
+        NSLog(@"[PlayerModel] ✅ 命中 %@ 缓存，使用本地播放: %@", cacheLevel, cachedURL.path.lastPathComponent);
+        
+        [self playWithURL:cachedURL songId:songId];
+        [cacheManager setCurrentPrioritySong:songId];
         return;
     }
     
-    NSLog(@"[PlayerModel] 未命中缓存");
+    NSLog(@"[PlayerModel] 未命中缓存，将使用网络播放");
 
     XCNetworkManager *networkManager = [XCNetworkManager sharedInstance];
     [networkManager findUrlOfSongWithId:songId completion:^(NSURL * _Nullable songUrl) {
@@ -339,7 +371,12 @@ static XCMusicPlayerModel *instance = nil;
             if (songUrl) {
                 NSLog(@"[PlayerModel] 获取到歌曲 URL: %@", songUrl);
                 [self playWithURL:songUrl songId:songId];
+                
+                // Phase 8: 设置当前优先歌曲（防止 L1 被清理）
+                [cacheManager setCurrentPrioritySong:songId];
 
+                // 旧缓存系统调用（已注释，保留代码供参考）
+                /*
                 XC_YYSongData *song = [self findSongInPlaylistById:songId];
                 if (song) {
                     song.songUrl = songUrl.absoluteString;
@@ -348,6 +385,7 @@ static XCMusicPlayerModel *instance = nil;
                 } else {
                     NSLog(@"[PlayerModel] 播放列表中未找到该歌曲，无法缓存: %@", songId);
                 }
+                */
             } else {
                 NSLog(@"[PlayerModel] 无法获取歌曲 URL: %@", songId);
             }
@@ -356,11 +394,40 @@ static XCMusicPlayerModel *instance = nil;
 }
 
 // 播放指定 URL
+// Phase 8: 添加播放进度监听用于触发预加载
+// Phase B: 使用自定义 scheme 触发 ResourceLoader 实现边下边播
 - (void)playWithURL:(NSURL *)url songId:(NSString *)songId {
-    NSLog(@"[PlayerModel]创建播放器: %@", songId);
-    NSLog(@"[PlayerModel]URL: %@", url);
+    NSLog(@"[PlayerModel] 创建播放器: %@", songId);
+    NSLog(@"[PlayerModel] 原始 URL: %@", url);
     
-    AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:url];
+    // 判断是本地文件还是网络 URL
+    BOOL isLocalFile = [url.scheme isEqualToString:@"file"];
+    
+    AVPlayerItem *playerItem;
+    
+    if (isLocalFile) {
+        // 本地缓存文件：直接播放，不使用 ResourceLoader
+        NSLog(@"[PlayerModel] 使用本地文件播放");
+        playerItem = [AVPlayerItem playerItemWithURL:url];
+    } else {
+        // 网络 URL：使用 ResourceLoader 实现边下边播
+        NSLog(@"[PlayerModel] 使用 ResourceLoader 播放网络音频");
+        
+        XCResourceLoaderManager *resourceLoader = [XCResourceLoaderManager sharedInstance];
+        NSURL *streamingURL = [resourceLoader streamingURLFromOriginalURL:url songId:songId];
+        
+        NSLog(@"[PlayerModel] 自定义 scheme URL: %@", streamingURL);
+        
+        // 创建 AVURLAsset 并设置 resourceLoader
+        AVURLAsset *asset = [AVURLAsset URLAssetWithURL:streamingURL options:nil];
+        [asset.resourceLoader setDelegate:resourceLoader queue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)];
+        
+        playerItem = [AVPlayerItem playerItemWithAsset:asset];
+    }
+    
+    // 添加播放项状态监听（关键：等待资源准备好后再播放）
+    [playerItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:nil];
+    
     if (!self.player) {
         self.player = [AVPlayer playerWithPlayerItem:playerItem];
         NSLog(@"[PlayerModel] 创建新的 AVPlayer");
@@ -369,12 +436,70 @@ static XCMusicPlayerModel *instance = nil;
         NSLog(@"[PlayerModel] 替换当前播放项");
     }
     
-    [self.player play];
-    _isPlaying = YES;
-    NSLog(@"[PlayerModel] 开始播放: %@", songId);
-    [self updateLockScreenInfo];
-    // 启动定时器更新锁屏进度
-    [self startLockScreenProgressTimer];
+    // 不要在这里立即调用 play，等待 status 变为 AVPlayerItemStatusReadyToPlay
+    NSLog(@"[PlayerModel] 等待资源加载完成...");
+}
+
+// Phase 8: 添加播放进度观察，在 50% 时触发预加载
+- (void)addProgressObserverForPreload {
+    __weak typeof(self) weakSelf = self;
+    [self.player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC)
+                                              queue:dispatch_get_main_queue()
+                                         usingBlock:^(CMTime time) {
+        [weakSelf checkPlaybackProgressForPreload];
+    }];
+}
+
+// Phase 8: 检查播放进度，50% 时触发预加载
+- (void)checkPlaybackProgressForPreload {
+    if (!self.player || !self.nowPlayingSong || self.hasTriggeredPreload) {
+        return;
+    }
+    
+    CMTime currentTime = self.player.currentTime;
+    CMTime duration = self.player.currentItem.duration;
+    
+    if (CMTIME_IS_INVALID(duration) || CMTIME_IS_INVALID(currentTime)) {
+        return;
+    }
+    
+    CGFloat currentSeconds = CMTimeGetSeconds(currentTime);
+    CGFloat durationSeconds = CMTimeGetSeconds(duration);
+    
+    if (durationSeconds <= 0) {
+        return;
+    }
+    
+    CGFloat progress = currentSeconds / durationSeconds;
+    
+    // 播放达到 50% 时触发预加载
+    if (progress >= 0.5) {
+        self.hasTriggeredPreload = YES;
+        [self preloadNextSong];
+    }
+}
+
+// Phase 8: 预加载下一首歌曲
+- (void)preloadNextSong {
+    if (self.playerlist.count == 0) {
+        return;
+    }
+    
+    NSInteger currentIndex = [self.playerlist indexOfObject:self.nowPlayingSong];
+    if (currentIndex == NSNotFound) {
+        return;
+    }
+    
+    NSInteger nextIndex = (currentIndex + 1) % self.playerlist.count;
+    if (nextIndex == currentIndex) {
+        return; // 只有一首歌
+    }
+    
+    XC_YYSongData *nextSong = self.playerlist[nextIndex];
+    NSLog(@"[PlayerModel] 播放进度 50%%，触发预加载下一首: %@", nextSong.name);
+    
+    [[XCPreloadManager sharedInstance] preloadSong:nextSong.songId 
+                                          priority:XCAudioPreloadPriorityHigh];
 }
 
 // 在播放列表中查找歌曲
@@ -397,12 +522,34 @@ static XCMusicPlayerModel *instance = nil;
 }
 
 // 根据当前播放歌曲，自动切换到下一首歌（顺序播放）
+// Phase 8: 已集成缓存保存和预加载机制
 - (void)playNextSong {
     NSLog(@"[PlayerModel] 切换到下一首");
 
     if (self.playerlist.count == 0) {
         NSLog(@"[PlayerModel] 播放列表为空，无法切换");
         return;
+    }
+    
+    // Phase 8: 保存当前歌曲到缓存（L1 -> L2 -> L3 流转）
+    NSString *currentSongId = self.nowPlayingSong.songId;
+    if (currentSongId) {
+        XCAudioCacheManager *cacheManager = [XCAudioCacheManager sharedInstance];
+        // 传 0 表示不验证文件大小（因为我们不知道完整的文件大小）
+        // 歌曲数据会在 L2 保留，下次继续下载
+        NSInteger expectedSize = 0;
+        
+        NSLog(@"[PlayerModel] 保存当前歌曲到缓存: %@", currentSongId);
+        XCAudioFileCacheState finalState = [cacheManager saveAndFinalizeSong:currentSongId 
+                                                                expectedSize:expectedSize];
+        NSString *stateStr = @"Unknown";
+        switch (finalState) {
+            case XCAudioFileCacheStateNone: stateStr = @"None"; break;
+            case XCAudioFileCacheStateInMemory: stateStr = @"L1(InMemory)"; break;
+            case XCAudioFileCacheStateTempFile: stateStr = @"L2(Temp)"; break;
+            case XCAudioFileCacheStateComplete: stateStr = @"L3(Complete)"; break;
+        }
+        NSLog(@"[PlayerModel] 当前歌曲缓存状态: %@", stateStr);
     }
     
     // 找到当前播放索引
@@ -423,13 +570,18 @@ static XCMusicPlayerModel *instance = nil;
     NSLog(@"[PlayerModel] 下一首索引: %lu, 歌曲: %@",
           (unsigned long)nextIndex, nextSong.name);
     
-    // 预加载下下首到内存
+    // Phase 8: 使用新的预加载管理器预加载下下首
     NSInteger preloadIndex = (nextIndex + 1) % self.playerlist.count;
     if (preloadIndex != nextIndex) {  // 避免只有一首歌时重复加载
         XC_YYSongData *preloadSong = self.playerlist[preloadIndex];
         NSLog(@"[PlayerModel] 预加载歌曲: %@ (索引: %lu)",
               preloadSong.name, (unsigned long)preloadIndex);
-        [[XCMusicMemoryCache sharedInstance] downloadAndCache:preloadSong];
+        
+        // 使用新的预加载管理器
+        [[XCPreloadManager sharedInstance] setNextPlayingSong:preloadSong.songId];
+        
+        // 旧预加载调用（已注释，保留代码供参考）
+        // [[XCMusicMemoryCache sharedInstance] downloadAndCache:preloadSong];
     }
     
     [self playMusicWithId:nextSong.songId];
@@ -443,6 +595,9 @@ static XCMusicPlayerModel *instance = nil;
         NSLog(@"[PlayerModel] 播放列表为空，无法切换");
         return;
     }
+    
+    // Phase 8: 重置预加载触发标记
+    self.hasTriggeredPreload = NO;
     
     NSInteger currentIndex = [self.playerlist indexOfObject:self.nowPlayingSong];
     if (currentIndex == NSNotFound) {
@@ -500,8 +655,31 @@ static XCMusicPlayerModel *instance = nil;
     }];
     [commandCenter.changePlaybackPositionCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
         MPChangePlaybackPositionCommandEvent *positionEvent = (MPChangePlaybackPositionCommandEvent *)event;
-        NSLog(@"[PlayerModel] 远程命令: 进度调整 -> %.1fs", positionEvent.positionTime);
-        // TODO: 自己的调整播放时间的操作
+        NSTimeInterval targetTime = positionEvent.positionTime;
+        
+        NSLog(@"[PlayerModel] 🎛️ 锁屏进度调整: %.1fs", targetTime);
+        
+        // 记录是否在播放
+        BOOL wasPlaying = self.player.rate > 0;
+        
+        // 暂停
+        if (wasPlaying) {
+            [self pauseMusic];
+        }
+        
+        // 执行跳转
+        CMTime targetCMTime = CMTimeMakeWithSeconds(targetTime, NSEC_PER_SEC);
+        __weak typeof(self) weakSelf = self;
+        [self.player seekToTime:targetCMTime completionHandler:^(BOOL finished) {
+            if (finished) {
+                NSLog(@"[PlayerModel] ✅ 锁屏跳转完成");
+                // 如果之前在播放，恢复播放
+                if (wasPlaying) {
+                    [weakSelf playMusic];
+                }
+            }
+        }];
+        
         return MPRemoteCommandHandlerStatusSuccess;
     }];
     NSLog(@"[PlayerModel] 远程控制命令设置完成");
@@ -580,7 +758,7 @@ static XCMusicPlayerModel *instance = nil;
 // TODO: 完成从沙盒里取数据和放数据和查数据
 
 #pragma mark - 缓存测试方法
-
+/*
 /// 测试内存缓存功能（可在 viewDidLoad 中调用）
 - (void)testMemoryCache {
     NSLog(@"=================================================================");
@@ -629,7 +807,7 @@ static XCMusicPlayerModel *instance = nil;
     NSLog(@"[PlayerModel] 🧪 内存缓存测试结束");
     NSLog(@"=================================================================");
 }
-
+*/
 #pragma mark - 锁屏进度定时器
 
 - (void)startLockScreenProgressTimer {
