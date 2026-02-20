@@ -32,6 +32,16 @@
 /// @discussion 用于歌曲下载完整后，从临时位置移动到永久缓存
 - (BOOL)moveTempFileToCache:(NSString *)tempFilePath forSongId:(NSString *)songId;
 
+/// 将临时文件移动到缓存目录（指定目标路径）
+/// - Parameters:
+///   - tempFilePath: 临时文件路径
+///   - cachePath: 目标缓存文件路径
+///   - songId: 歌曲标识
+/// - Returns: 是否移动成功
+- (BOOL)moveTempFileToCache:(NSString *)tempFilePath 
+                  cachePath:(NSString *)cachePath 
+                  forSongId:(NSString *)songId;
+
 #pragma mark - 读取操作
 
 /// 获取缓存文件的 URL

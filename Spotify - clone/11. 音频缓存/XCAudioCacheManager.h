@@ -19,6 +19,14 @@
 /// 获取单例实例
 + (instancetype)sharedInstance;
 
+#pragma mark - URL 记录
+
+/// 记录 songId 对应的原始 URL，用于确定正确的文件扩展名
+/// @param url 原始音频 URL
+/// @param songId 歌曲唯一标识
+/// @discussion 在播放网络音频时调用，确保缓存文件使用正确的扩展名
+- (void)recordOriginalURL:(NSURL *)url forSongId:(NSString *)songId;
+
 #pragma mark - 三级查询（L3 → L2 → nil）
 
 /// 查询歌曲缓存状态

@@ -25,6 +25,10 @@
 @property (nonatomic, strong) XCPersistentCacheManager *persistentManager;
 @property (nonatomic, strong) XCCacheIndexManager *indexManager;
 
+// 记录 songId 对应的原始 URL，用于确定正确的文件扩展名
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSURL *> *songURLMap;
+@property (nonatomic, strong) dispatch_queue_t urlMapQueue;
+
 @end
 
 @implementation XCAudioCacheManager
@@ -49,6 +53,10 @@
         _tempManager = [XCTempCacheManager sharedInstance];          // L2: 临时文件缓存
         _persistentManager = [XCPersistentCacheManager sharedInstance]; // L3: 永久缓存
         _indexManager = [XCCacheIndexManager sharedInstance];        // 缓存索引管理
+        
+        // 初始化 URL 映射表
+        _songURLMap = [NSMutableDictionary dictionary];
+        _urlMapQueue = dispatch_queue_create("com.spotifyclone.cache.urlmap", DISPATCH_QUEUE_CONCURRENT);
     }
     return self;
 }
@@ -83,16 +91,10 @@
   }
 
   // 【L3 查询】优先检查永久缓存，命中则更新 LRU 时间
-  NSURL *url = [self.persistentManager cachedURLForSongId:songId];
-  if (url) {
+  NSString *path = [self cachedFilePathForSongId:songId];
+  if (path) {
       [self.indexManager updatePlayTimeForSongId:songId];
-      return url;
-  }
-
-  // 【L2 查询】检查临时文件缓存
-  url = [self.tempManager tempFileURLForSongId:songId];
-  if (url) {
-      return url;
+      return [NSURL fileURLWithPath:path];
   }
 
   return nil; // L1 内存缓存不提供文件 URL
@@ -103,17 +105,49 @@
         return nil;
     }
     
-    // 先查 L3
-    NSString *path = [self.persistentManager cachedFilePathForSongId:songId];
-    if (path) {
+    // 获取该歌曲对应的原始 URL，用于确定正确的文件扩展名
+    __block NSURL *originalURL = nil;
+    dispatch_sync(self.urlMapQueue, ^{
+        originalURL = self.songURLMap[songId];
+    });
+    
+    NSFileManager *fm = [NSFileManager defaultManager];
+    XCAudioCachePathUtils *pathUtils = [XCAudioCachePathUtils sharedInstance];
+    
+    // 先查 L3（使用正确的扩展名）
+    NSString *l3Path = [pathUtils cacheFilePathForSongId:songId originalURL:originalURL];
+    if ([fm fileExistsAtPath:l3Path]) {
         [self.indexManager updatePlayTimeForSongId:songId];
-        return path;
+        return l3Path;
     }
     
-    // 再查 L2
-    path = [self.tempManager tempFilePathForSongId:songId];
-    if (path) {
-        return path;
+    // 再查 L2（使用正确的扩展名）
+    NSString *l2Path = [pathUtils tempFilePathForSongId:songId originalURL:originalURL];
+    if ([fm fileExistsAtPath:l2Path]) {
+        return l2Path;
+    }
+    
+    // 如果 originalURL 为 nil，尝试搜索 L2 目录中匹配的文件（任何扩展名）
+    if (!originalURL) {
+        NSString *tempDir = pathUtils.tempDirectory;
+        NSArray *contents = [fm contentsOfDirectoryAtPath:tempDir error:nil];
+        NSString *pattern = [NSString stringWithFormat:@"%@_tmp.", songId];
+        for (NSString *fileName in contents) {
+            if ([fileName hasPrefix:pattern]) {
+                return [tempDir stringByAppendingPathComponent:fileName];
+            }
+        }
+    }
+    
+    // 兼容旧格式：检查 .mp3 扩展名的文件（迁移用）
+    NSString *oldL3Path = [pathUtils cacheFilePathForSongId:songId];
+    if ([fm fileExistsAtPath:oldL3Path]) {
+        [self.indexManager updatePlayTimeForSongId:songId];
+        return oldL3Path;
+    }
+    NSString *oldL2Path = [pathUtils tempFilePathForSongId:songId];
+    if ([fm fileExistsAtPath:oldL2Path]) {
+        return oldL2Path;
     }
     
     return nil;
@@ -129,6 +163,30 @@
 
 - (BOOL)hasMemoryCacheForSongId:(NSString *)songId {
     return [self.memoryManager segmentCountForSongId:songId] > 0;
+}
+
+#pragma mark - URL 记录
+
+/// 记录 songId 对应的原始 URL，用于确定正确的文件扩展名
+- (void)recordOriginalURL:(NSURL *)url forSongId:(NSString *)songId {
+    if (!songId || songId.length == 0 || !url) {
+        return;
+    }
+    dispatch_barrier_async(self.urlMapQueue, ^{
+        self.songURLMap[songId] = url;
+    });
+}
+
+/// 获取 songId 对应的原始 URL
+- (NSURL *)originalURLForSongId:(NSString *)songId {
+    if (!songId || songId.length == 0) {
+        return nil;
+    }
+    __block NSURL *url = nil;
+    dispatch_sync(self.urlMapQueue, ^{
+        url = self.songURLMap[songId];
+    });
+    return url;
 }
 
 #pragma mark - L1 层操作
@@ -199,8 +257,10 @@
         return NO;
     }
     
-    // 【L1→L2】获取临时文件路径，使用流式合并写入（避免大文件内存峰值）
-    NSString *tempPath = [[XCAudioCachePathUtils sharedInstance] tempFilePathForSongId:songId];
+    // 【L1→L2】获取临时文件路径（使用正确的扩展名），使用流式合并写入
+    NSURL *originalURL = [self originalURLForSongId:songId];
+    NSString *tempPath = [[XCAudioCachePathUtils sharedInstance] tempFilePathForSongId:songId 
+                                                                            originalURL:originalURL];
     
     BOOL success = [self.memoryManager writeMergedSegmentsToFile:tempPath
                                                       forSongId:songId];
@@ -210,8 +270,8 @@
     }
     
     // 【流程日志】记录 L1→L2 合并完成，保留 L1 用于可能正在播放的场景
-    NSLog(@"[AudioCacheManager] Finalized song %@ to L2 (%ld segments)",
-          songId, (long)segmentCount);
+    NSLog(@"[AudioCacheManager] Finalized song %@ to L2 (%ld segments), ext: %@",
+          songId, (long)segmentCount, [originalURL.path pathExtension] ?: @"mp3");
     
     // 【注意】此处不清空 L1，歌曲可能仍在播放，清空应在切歌后或验证完成后
     
@@ -226,15 +286,26 @@
         return NO;
     }
     
-    // 【检查 L2】确认临时文件存在
-    if (![self.tempManager hasTempFileForSongId:songId]) {
-        NSLog(@"[AudioCacheManager] No L2 temp file for song: %@", songId);
-        return NO;
+    // 【检查 L2】确认临时文件存在（使用正确的扩展名）
+    NSURL *originalURL = [self originalURLForSongId:songId];
+    NSString *tempPath = [[XCAudioCachePathUtils sharedInstance] tempFilePathForSongId:songId 
+                                                                            originalURL:originalURL];
+    NSFileManager *fm = [NSFileManager defaultManager];
+    if (![fm fileExistsAtPath:tempPath]) {
+        // 兼容旧格式：检查 .mp3.tmp 文件
+        NSString *oldTempPath = [[XCAudioCachePathUtils sharedInstance] tempFilePathForSongId:songId];
+        if (![fm fileExistsAtPath:oldTempPath]) {
+            NSLog(@"[AudioCacheManager] No L2 temp file for song: %@", songId);
+            return NO;
+        }
     }
     
-    // 【L2→L3】验证文件完整性并移动到永久缓存
-    BOOL success = [self.tempManager confirmCompleteAndMoveToCache:songId
-                                                      expectedSize:expectedSize];
+    // 【L2→L3】验证文件完整性并移动到永久缓存（使用正确的扩展名）
+    NSString *cachePath = [[XCAudioCachePathUtils sharedInstance] cacheFilePathForSongId:songId 
+                                                                               originalURL:originalURL];
+    BOOL success = [self.persistentManager moveTempFileToCache:tempPath 
+                                                    cachePath:cachePath
+                                                     forSongId:songId];
     if (success) {
         // 【清理 L1】移动到 L3 成功后，清空 L1 分段释放内存
         [self.memoryManager clearSegmentsForSongId:songId];

@@ -85,7 +85,14 @@
 }
 
 - (BOOL)moveTempFileToCache:(NSString *)tempFilePath forSongId:(NSString *)songId {
-    if (!tempFilePath || !songId || songId.length == 0) {
+    NSString *cachePath = [[XCAudioCachePathUtils sharedInstance] cacheFilePathForSongId:songId];
+    return [self moveTempFileToCache:tempFilePath cachePath:cachePath forSongId:songId];
+}
+
+- (BOOL)moveTempFileToCache:(NSString *)tempFilePath 
+                  cachePath:(NSString *)cachePath 
+                  forSongId:(NSString *)songId {
+    if (!tempFilePath || !cachePath || !songId || songId.length == 0) {
         return NO;
     }
     
@@ -95,11 +102,22 @@
         return NO;
     }
     
-    NSString *cachePath = [[XCAudioCachePathUtils sharedInstance] cacheFilePathForSongId:songId];
-    
     __block BOOL success = NO;
     __block NSError *blockError = nil;
     dispatch_sync(self.ioQueue, ^{
+        // 确保目标目录存在
+        NSString *cacheDir = [cachePath stringByDeletingLastPathComponent];
+        if (![fm fileExistsAtPath:cacheDir]) {
+            NSError *dirError;
+            [fm createDirectoryAtPath:cacheDir
+          withIntermediateDirectories:YES
+                           attributes:nil
+                                error:&dirError];
+            if (dirError) {
+                NSLog(@"[PersistentCache] Failed to create cache directory: %@", dirError.localizedDescription);
+            }
+        }
+        
         // 如果目标文件已存在，先删除
         if ([fm fileExistsAtPath:cachePath]) {
             [fm removeItemAtPath:cachePath error:nil];
@@ -121,7 +139,8 @@
             [info updatePlayTime];
             [[XCCacheIndexManager sharedInstance] addSongCacheInfo:info];
             
-            NSLog(@"[PersistentCache] Moved temp to cache: %@, size: %ld", songId, (long)fileSize);
+            NSLog(@"[PersistentCache] Moved temp to cache: %@, size: %ld, path: %@", 
+                  songId, (long)fileSize, cachePath.lastPathComponent);
         } else {
             NSLog(@"[PersistentCache] Failed to move file: %@", blockError.localizedDescription);
         }
@@ -143,12 +162,26 @@
 - (NSString *)cachedFilePathForSongId:(NSString *)songId {
     if (!songId || songId.length == 0) return nil;
     
-    NSString *path = [[XCAudioCachePathUtils sharedInstance] cacheFilePathForSongId:songId];
     NSFileManager *fm = [NSFileManager defaultManager];
+    XCAudioCachePathUtils *pathUtils = [XCAudioCachePathUtils sharedInstance];
+    NSString *cacheDir = pathUtils.cacheDirectory;
     
-    if ([fm fileExistsAtPath:path]) {
-        return path;
+    // 尝试查找目录中匹配 songId 的文件（任何扩展名）
+    NSArray *contents = [fm contentsOfDirectoryAtPath:cacheDir error:nil];
+    for (NSString *fileName in contents) {
+        // 匹配 {songId}.xxx 格式的文件
+        NSString *pattern = [NSString stringWithFormat:@"%@.", songId];
+        if ([fileName hasPrefix:pattern] && ![fileName hasSuffix:@".plist"]) {
+            return [cacheDir stringByAppendingPathComponent:fileName];
+        }
     }
+    
+    // 兼容旧格式：.mp3
+    NSString *oldPath = [pathUtils cacheFilePathForSongId:songId];
+    if ([fm fileExistsAtPath:oldPath]) {
+        return oldPath;
+    }
+    
     return nil;
 }
 
@@ -205,8 +238,13 @@
         }
         
         for (NSString *fileName in contents) {
-            // 只删除 .mp3 文件，保留 index.plist
-            if ([fileName hasSuffix:@".mp3"]) {
+            // 删除音频文件（支持多种扩展名），保留 index.plist
+            // 匹配常见的音频扩展名: mp3, m4a, aac, wav, flac, ogg, wma
+            NSString *lowerName = [fileName lowercaseString];
+            if ([lowerName hasSuffix:@".mp3"] || [lowerName hasSuffix:@".m4a"] ||
+                [lowerName hasSuffix:@".aac"] || [lowerName hasSuffix:@".wav"] ||
+                [lowerName hasSuffix:@".flac"] || [lowerName hasSuffix:@".ogg"] ||
+                [lowerName hasSuffix:@".wma"]) {
                 NSString *filePath = [cacheDir stringByAppendingPathComponent:fileName];
                 [fm removeItemAtPath:filePath error:nil];
             }

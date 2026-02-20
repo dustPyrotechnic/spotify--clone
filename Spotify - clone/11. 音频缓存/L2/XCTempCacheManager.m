@@ -46,6 +46,10 @@
 #pragma mark - 写入操作
 
 - (BOOL)writeTempSongData:(NSData *)data forSongId:(NSString *)songId {
+    return [self writeTempSongData:data forSongId:songId originalURL:nil];
+}
+
+- (BOOL)writeTempSongData:(NSData *)data forSongId:(NSString *)songId originalURL:(NSURL *)originalURL {
     if (!data || data.length == 0 || !songId || songId.length == 0) {
         NSLog(@"[TempCache] Invalid parameters for writeTempSongData");
         return NO;
@@ -53,7 +57,8 @@
     
     __block BOOL success = NO;
     dispatch_sync(self.ioQueue, ^{
-        NSString *filePath = [[XCAudioCachePathUtils sharedInstance] tempFilePathForSongId:songId];
+        NSString *filePath = [[XCAudioCachePathUtils sharedInstance] tempFilePathForSongId:songId 
+                                                                            originalURL:originalURL];
         NSFileManager *fm = [NSFileManager defaultManager];
         
         // 确保目录存在
@@ -137,15 +142,60 @@
     return nil;
 }
 
+- (NSURL *)tempFileURLForSongId:(NSString *)songId originalURL:(NSURL *)originalURL {
+    NSString *path = [self tempFilePathForSongId:songId originalURL:originalURL];
+    if (path) {
+        return [NSURL fileURLWithPath:path];
+    }
+    return nil;
+}
+
 - (NSString *)tempFilePathForSongId:(NSString *)songId {
     if (!songId || songId.length == 0) return nil;
     
-    NSString *path = [[XCAudioCachePathUtils sharedInstance] tempFilePathForSongId:songId];
     NSFileManager *fm = [NSFileManager defaultManager];
+    XCAudioCachePathUtils *pathUtils = [XCAudioCachePathUtils sharedInstance];
     
+    // 先尝试新的命名方式（带正确扩展名）
+    // 但我们不知道扩展名，所以尝试查找目录中匹配 songId 的文件
+    NSString *tempDir = pathUtils.tempDirectory;
+    NSArray *contents = [fm contentsOfDirectoryAtPath:tempDir error:nil];
+    for (NSString *fileName in contents) {
+        // 新格式: {songId}_tmp.{ext}
+        // 旧格式: {songId}.mp3.tmp
+        NSString *pattern = [NSString stringWithFormat:@"%@_tmp.", songId];
+        if ([fileName hasPrefix:pattern]) {
+            return [tempDir stringByAppendingPathComponent:fileName];
+        }
+    }
+    
+    // 兼容旧格式：.mp3.tmp
+    NSString *oldPath = [pathUtils tempFilePathForSongId:songId];
+    if ([fm fileExistsAtPath:oldPath]) {
+        return oldPath;
+    }
+    
+    return nil;
+}
+
+- (NSString *)tempFilePathForSongId:(NSString *)songId originalURL:(NSURL *)originalURL {
+    if (!songId || songId.length == 0) return nil;
+    
+    NSFileManager *fm = [NSFileManager defaultManager];
+    XCAudioCachePathUtils *pathUtils = [XCAudioCachePathUtils sharedInstance];
+    
+    // 使用正确的扩展名
+    NSString *path = [pathUtils tempFilePathForSongId:songId originalURL:originalURL];
     if ([fm fileExistsAtPath:path]) {
         return path;
     }
+    
+    // 兼容旧格式：.mp3.tmp
+    NSString *oldPath = [pathUtils tempFilePathForSongId:songId];
+    if ([fm fileExistsAtPath:oldPath]) {
+        return oldPath;
+    }
+    
     return nil;
 }
 
@@ -153,6 +203,10 @@
 
 - (BOOL)hasTempFileForSongId:(NSString *)songId {
     return [self tempFilePathForSongId:songId] != nil;
+}
+
+- (BOOL)hasTempFileForSongId:(NSString *)songId originalURL:(NSURL *)originalURL {
+    return [self tempFilePathForSongId:songId originalURL:originalURL] != nil;
 }
 
 - (NSInteger)tempFileSizeForSongId:(NSString *)songId {
@@ -224,7 +278,9 @@
         
         NSInteger deletedCount = 0;
         for (NSString *fileName in contents) {
-            if ([fileName hasSuffix:@".mp3.tmp"]) {
+            // 匹配新的命名模式: {songId}_tmp.{ext}
+            // 也兼容旧的命名模式: {songId}.mp3.tmp
+            if ([fileName containsString:@"_tmp."] || [fileName hasSuffix:@".mp3.tmp"]) {
                 NSString *filePath = [tempDir stringByAppendingPathComponent:fileName];
                 [fm removeItemAtPath:filePath error:nil];
                 deletedCount++;
@@ -305,12 +361,26 @@
         NSDate *now = [NSDate date];
         
         for (NSString *fileName in contents) {
-            if (![fileName hasSuffix:@".mp3.tmp"]) continue;
+            // 匹配新的命名模式: {songId}_tmp.{ext}
+            // 也兼容旧的命名模式: {songId}.mp3.tmp
+            if (!([fileName containsString:@"_tmp."] || [fileName hasSuffix:@".mp3.tmp"])) continue;
             
             NSString *filePath = [tempDir stringByAppendingPathComponent:fileName];
             
-            // 提取 songId（去掉 .mp3.tmp 后缀）
-            NSString *songId = [fileName stringByReplacingOccurrencesOfString:@".mp3.tmp" withString:@""];
+            // 提取 songId（支持新旧两种命名格式）
+            // 新格式: {songId}_tmp.{ext} -> {songId}
+            // 旧格式: {songId}.mp3.tmp -> {songId}
+            NSString *songId = fileName;
+            if ([fileName containsString:@"_tmp."]) {
+                // 新格式: 去掉 _tmp.xxx
+                NSRange range = [fileName rangeOfString:@"_tmp."];
+                if (range.location != NSNotFound) {
+                    songId = [fileName substringToIndex:range.location];
+                }
+            } else if ([fileName hasSuffix:@".mp3.tmp"]) {
+                // 旧格式: 去掉 .mp3.tmp
+                songId = [fileName stringByReplacingOccurrencesOfString:@".mp3.tmp" withString:@""];
+            }
             
             // 关闭可能打开的 fileHandle
             dispatch_sync(self.fileHandleQueue, ^{
@@ -357,7 +427,9 @@
         if (error) return;
         
         for (NSString *fileName in contents) {
-            if ([fileName hasSuffix:@".mp3.tmp"]) {
+            // 匹配新的命名模式: {songId}_tmp.{ext}
+            // 也兼容旧的命名模式: {songId}.mp3.tmp
+            if ([fileName containsString:@"_tmp."] || [fileName hasSuffix:@".mp3.tmp"]) {
                 NSString *filePath = [tempDir stringByAppendingPathComponent:fileName];
                 NSDictionary *attrs = [fm attributesOfItemAtPath:filePath error:nil];
                 totalSize += [attrs[NSFileSize] integerValue];
@@ -380,7 +452,9 @@
         if (error) return;
         
         for (NSString *fileName in contents) {
-            if ([fileName hasSuffix:@".mp3.tmp"]) {
+            // 匹配新的命名模式: {songId}_tmp.{ext}
+            // 也兼容旧的命名模式: {songId}.mp3.tmp
+            if ([fileName containsString:@"_tmp."] || [fileName hasSuffix:@".mp3.tmp"]) {
                 count++;
             }
         }

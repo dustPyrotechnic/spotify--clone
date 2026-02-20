@@ -370,6 +370,10 @@ static XCMusicPlayerModel *instance = nil;
         dispatch_async(dispatch_get_main_queue(), ^{
             if (songUrl) {
                 NSLog(@"[PlayerModel] 获取到歌曲 URL: %@", songUrl);
+                
+                // Phase 8: 记录原始 URL，用于确定正确的文件扩展名
+                [cacheManager recordOriginalURL:songUrl forSongId:songId];
+                
                 [self playWithURL:songUrl songId:songId];
                 
                 // Phase 8: 设置当前优先歌曲（防止 L1 被清理）

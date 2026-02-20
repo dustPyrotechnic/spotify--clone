@@ -25,6 +25,13 @@
 /// @discussion 如果临时文件不存在会自动创建，存在则追加到文件末尾
 - (BOOL)writeTempSongData:(NSData *)data forSongId:(NSString *)songId;
 
+/// 追加写入临时文件（带正确的扩展名）
+/// @param data 要写入的数据块
+/// @param songId 歌曲唯一标识
+/// @param originalURL 原始音频 URL，用于确定正确的文件扩展名
+/// @return YES 表示写入成功
+- (BOOL)writeTempSongData:(NSData *)data forSongId:(NSString *)songId originalURL:(NSURL *)originalURL;
+
 /// 创建或打开临时文件的写入句柄
 /// @param songId 歌曲唯一标识
 /// @return NSFileHandle 实例，失败返回 nil
@@ -38,10 +45,24 @@
 /// @return 文件 URL，如果不存在返回 nil
 - (NSURL *)tempFileURLForSongId:(NSString *)songId;
 
+/// 获取临时文件的 URL（带正确的扩展名）
+/// - Parameters:
+///   - songId: 歌曲唯一标识
+///   - originalURL: 原始音频 URL，用于确定正确的文件扩展名
+/// - Returns: 文件 URL，如果不存在返回 nil
+- (NSURL *)tempFileURLForSongId:(NSString *)songId originalURL:(NSURL *)originalURL;
+
 /// 获取临时文件的本地路径
 /// @param songId 歌曲唯一标识
 /// @return 文件路径，如果不存在返回 nil
 - (NSString *)tempFilePathForSongId:(NSString *)songId;
+
+/// 获取临时文件的本地路径（带正确的扩展名）
+/// - Parameters:
+///   - songId: 歌曲唯一标识
+///   - originalURL: 原始音频 URL，用于确定正确的文件扩展名
+/// - Returns: 文件路径，如果不存在返回 nil
+- (NSString *)tempFilePathForSongId:(NSString *)songId originalURL:(NSURL *)originalURL;
 
 #pragma mark - 查询操作
 
@@ -49,6 +70,13 @@
 /// @param songId 歌曲唯一标识
 /// @return YES 表示 L2 存在该歌曲的临时文件
 - (BOOL)hasTempFileForSongId:(NSString *)songId;
+
+/// 检查临时文件是否存在（带正确的扩展名）
+/// - Parameters:
+///   - songId: 歌曲唯一标识
+///   - originalURL: 原始音频 URL，用于确定正确的文件扩展名
+/// - Returns: YES 表示 L2 存在该歌曲的临时文件
+- (BOOL)hasTempFileForSongId:(NSString *)songId originalURL:(NSURL *)originalURL;
 
 /// 获取临时文件大小
 /// @param songId 歌曲唯一标识
