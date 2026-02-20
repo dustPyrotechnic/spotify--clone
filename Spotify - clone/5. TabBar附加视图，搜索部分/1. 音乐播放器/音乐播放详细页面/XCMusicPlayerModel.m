@@ -428,16 +428,44 @@ static XCMusicPlayerModel *instance = nil;
     // 添加播放项状态监听（关键：等待资源准备好后再播放）
     [playerItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:nil];
     
+    // 注册播放完成通知（自动切歌）
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleSongFinished:)
+                                                 name:AVPlayerItemDidPlayToEndTimeNotification
+                                               object:playerItem];
+    
     if (!self.player) {
         self.player = [AVPlayer playerWithPlayerItem:playerItem];
         NSLog(@"[PlayerModel] 创建新的 AVPlayer");
     } else {
+        // 替换前先移除旧播放项的通知监听
+        [self removePlaybackFinishedObserver];
         [self.player replaceCurrentItemWithPlayerItem:playerItem];
         NSLog(@"[PlayerModel] 替换当前播放项");
     }
     
     // 不要在这里立即调用 play，等待 status 变为 AVPlayerItemStatusReadyToPlay
     NSLog(@"[PlayerModel] 等待资源加载完成...");
+}
+
+/// 移除播放完成通知监听
+- (void)removePlaybackFinishedObserver {
+    if (self.player.currentItem) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                        name:AVPlayerItemDidPlayToEndTimeNotification
+                                                      object:self.player.currentItem];
+        NSLog(@"[PlayerModel] 移除旧播放项的完成通知监听");
+    }
+}
+
+/// 播放完成回调 - 自动切换到下一首
+- (void)handleSongFinished:(NSNotification *)notification {
+    NSLog(@"[PlayerModel] 🎵 歌曲播放完成，准备自动切换到下一首");
+    
+    // 在主线程执行切歌操作
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self playNextSong];
+    });
 }
 
 // Phase 8: 添加播放进度观察，在 50% 时触发预加载
