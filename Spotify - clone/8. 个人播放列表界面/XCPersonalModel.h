@@ -10,12 +10,21 @@
 #import "XC-YYSongData.h"
 #import "XC-YYAlbumData.h"
 
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface XCPersonalModel : NSObject
-/// 存储个人播放列表的专辑
-@property (nonatomic, strong) NSMutableArray<XC_YYAlbumData*>* personalAlbumArray;
+
+/// 播放列表数组（从 DB 加载）
+@property (nonatomic, strong) NSMutableArray<XC_YYAlbumData *> *playlists;
+
++ (instancetype)sharedInstance;
+
+/// 从数据库重新加载所有播放列表
+- (void)loadPlaylists;
+
+/// 新建播放列表，成功返回新建对象，失败返回 nil
+- (nullable XC_YYAlbumData *)createPlaylistWithName:(NSString *)name;
+
 @end
 
 NS_ASSUME_NONNULL_END

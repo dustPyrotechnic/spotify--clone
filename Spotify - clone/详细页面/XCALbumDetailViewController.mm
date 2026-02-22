@@ -11,6 +11,7 @@
 #import "XCAlbumHeadCell.h"
 
 #import "XCMusicPlayerModel.h"
+#import "XCPlaylistDatabaseManager.h"
 
 #import <Masonry/Masonry.h>
 #import <SDWebImage/SDWebImage.h>
@@ -105,6 +106,77 @@
   cell.songLabel.text = song.name;
   cell.authorLabel.text = song.artist;
   cell.durationLabel.text = song.durationText;
+
+  // 菜单按钮回调
+  __weak typeof(self) weakSelf = self;
+  cell.menuButtonBlock = ^(NSString *songId) {
+      [weakSelf showMenuForSong:song];
+  };
+}
+
+- (void)showMenuForSong:(XC_YYSongData *)song {
+    UIAlertController *sheet = [UIAlertController
+        alertControllerWithTitle:song.name
+                         message:nil
+                  preferredStyle:UIAlertControllerStyleActionSheet];
+
+    BOOL isLiked = [[XCPlaylistDatabaseManager sharedInstance]
+                    isSong:song.songId inPlaylist:@"favorites"];
+    NSString *likeTitle = isLiked ? @"从喜爱的歌曲移除" : @"加入喜爱的歌曲";
+
+    [sheet addAction:[UIAlertAction actionWithTitle:likeTitle
+                                             style:UIAlertActionStyleDefault
+                                           handler:^(UIAlertAction *action) {
+        if (isLiked) {
+            [[XCPlaylistDatabaseManager sharedInstance]
+                removeSong:song.songId fromPlaylist:@"favorites"];
+        } else {
+            [[XCPlaylistDatabaseManager sharedInstance]
+                addSong:song toPlaylist:@"favorites"];
+        }
+    }]];
+
+    __weak typeof(self) weakSelf = self;
+    [sheet addAction:[UIAlertAction actionWithTitle:@"加入播放列表…"
+                                             style:UIAlertActionStyleDefault
+                                           handler:^(UIAlertAction *action) {
+        [weakSelf showPlaylistPickerForSong:song];
+    }]];
+
+    [sheet addAction:[UIAlertAction actionWithTitle:@"取消"
+                                             style:UIAlertActionStyleCancel
+                                           handler:nil]];
+
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+
+- (void)showPlaylistPickerForSong:(XC_YYSongData *)song {
+    NSArray<XC_YYAlbumData *> *playlists =
+        [[XCPlaylistDatabaseManager sharedInstance]
+            getAllPlaylistsSortedBy:XCPlaylistSortByUpdateTime];
+
+    UIAlertController *picker = [UIAlertController
+        alertControllerWithTitle:@"选择播放列表"
+                         message:nil
+                  preferredStyle:UIAlertControllerStyleActionSheet];
+
+    for (XC_YYAlbumData *playlist in playlists) {
+        [picker addAction:[UIAlertAction actionWithTitle:playlist.name
+                                                  style:UIAlertActionStyleDefault
+                                                handler:^(UIAlertAction *action) {
+            BOOL added = [[XCPlaylistDatabaseManager sharedInstance]
+                          addSong:song toPlaylist:playlist.albumId];
+            if (!added) {
+                NSLog(@"[Playlist] 歌曲《%@》已在播放列表《%@》中", song.name, playlist.name);
+            }
+        }]];
+    }
+
+    [picker addAction:[UIAlertAction actionWithTitle:@"取消"
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+
+    [self presentViewController:picker animated:YES completion:nil];
 }
 - (CGFloat) tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
   if (indexPath.row == 0) {

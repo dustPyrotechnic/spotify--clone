@@ -50,15 +50,22 @@
   UIImage *menuImage = [UIImage systemImageNamed:@"ellipsis" withConfiguration:symbolConfig];
   [self.menuButton setImage:menuImage forState:UIControlStateNormal];
   self.menuButton.tintColor = [UIColor tertiaryLabelColor];
-//  self.menuButton.contentEdgeInsets = UIEdgeInsetsMake(6, 6, 6, 6);
-//  self.menuButton.showsTouchWhenHighlighted = YES;
-  
+  [self.menuButton addTarget:self
+                      action:@selector(menuButtonTapped:)
+            forControlEvents:UIControlEventTouchUpInside];
+
   [self.contentView addSubview:self.mainImageView];
   [self.contentView addSubview:self.songLabel];
   [self.contentView addSubview:self.authorLabel];
 //  [self.contentView addSubview:self.durationLabel];
   [self.contentView addSubview:self.menuButton];
   [self setupConstraints];
+}
+
+- (void)menuButtonTapped:(UIButton *)sender {
+    if (self.menuButtonBlock) {
+        self.menuButtonBlock(self.songId);
+    }
 }
 
 - (void)setupConstraints {

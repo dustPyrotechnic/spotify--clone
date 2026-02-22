@@ -21,9 +21,9 @@ PODS:
     - LookinServer/Core (= 1.2.8)
   - LookinServer/Core (1.2.8)
   - Masonry (1.1.0)
-  - SDWebImage (5.21.3):
-    - SDWebImage/Core (= 5.21.3)
-  - SDWebImage/Core (5.21.3)
+  - SDWebImage (5.21.6):
+    - SDWebImage/Core (= 5.21.6)
+  - SDWebImage/Core (5.21.6)
   - UICKeyChainStore (2.2.1)
   - WCDB.objc (2.1.15):
     - WCDBOptimizedSQLCipher (= 1.4.8)
@@ -66,12 +66,12 @@ SPEC CHECKSUMS:
   ChameleonFramework: d21a3cc247abfe5e37609a283a8238b03575cf64
   LookinServer: 1b2b61c6402ae29fa22182d48f5cd067b4e99e80
   Masonry: 678fab65091a9290e40e2832a55e7ab731aad201
-  SDWebImage: 16309af6d214ba3f77a7c6f6fdda888cb313a50a
+  SDWebImage: 1bb6a1b84b6fe87b972a102bdc77dd589df33477
   UICKeyChainStore: ba3bff2c762b12db1e516f395c837dd25298b05e
   WCDB.objc: 35650ab6d455a4a865d94d95436b1ddc865479af
   WCDBOptimizedSQLCipher: 871994f7f620302fdf87a2729c099a1efa2223da
   YYModel: 2a7fdd96aaa4b86a824e26d0c517de8928c04b30
 
-PODFILE CHECKSUM: 9fe78f1708aad36be76664c24439c35ee2b27bfd
+PODFILE CHECKSUM: abb352c90e2be6b8f96cd509afab6d0f1badb472
 
 COCOAPODS: 1.16.2

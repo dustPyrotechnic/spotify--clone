@@ -10,8 +10,12 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface XCPersonalView : UIView
-/// 显示个人播放列表
-@property (nonatomic, strong) UITableView* tableView;
+
+/// 列表模式
+@property (nonatomic, strong) UITableView *tableView;
+/// 封面 Grid 模式
+@property (nonatomic, strong) UICollectionView *collectionView;
+
 @end
 
 NS_ASSUME_NONNULL_END
