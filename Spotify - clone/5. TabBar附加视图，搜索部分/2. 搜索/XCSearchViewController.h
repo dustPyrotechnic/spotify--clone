@@ -7,17 +7,16 @@
 
 #import <UIKit/UIKit.h>
 
-#import "XCSearchView.h"
-#import "XCSearchModel.h"
-
 NS_ASSUME_NONNULL_BEGIN
 
-@interface XCSearchViewController : UIViewController <UISearchResultsUpdating>
-@property (nonatomic, strong) XCSearchView* mainView;
-@property (nonatomic, strong) XCSearchModel* model;
+@class XCSearchView;
+@class XCSearchModel;
 
-// 搜索页面
-@property (nonatomic, strong) UISearchController* searchController;
+@interface XCSearchViewController : UIViewController
+
+@property (nonatomic, strong) XCSearchView *mainView;
+@property (nonatomic, strong) XCSearchModel *model;
+
 @end
 
 NS_ASSUME_NONNULL_END

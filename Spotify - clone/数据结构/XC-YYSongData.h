@@ -9,6 +9,7 @@
 #import <UIKit/UIKit.h>
 #import <YYModel/YYModel.h>
 
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface XC_YYSongData : NSObject <YYModel>

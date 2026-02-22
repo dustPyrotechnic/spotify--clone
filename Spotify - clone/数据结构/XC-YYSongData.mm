@@ -6,9 +6,9 @@
 //
 
 #import "XC-YYSongData.h"
-#import "WCDBObjc.h"
+#import <WCDBObjc/WCDBObjc.h>
 
-@interface XC_YYSongData () <WCTTableCoding>
+@interface XC_YYSongData () 
 @end
 
 @implementation XC_YYSongData
