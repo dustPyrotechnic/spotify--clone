@@ -107,76 +107,49 @@
   cell.authorLabel.text = song.artist;
   cell.durationLabel.text = song.durationText;
 
-  // 菜单按钮回调
-  __weak typeof(self) weakSelf = self;
-  cell.menuButtonBlock = ^(NSString *songId) {
-      [weakSelf showMenuForSong:song];
-  };
+  cell.menuButton.menu = [self menuForSong:song];
+  cell.menuButton.showsMenuAsPrimaryAction = YES;
 }
 
-- (void)showMenuForSong:(XC_YYSongData *)song {
-    UIAlertController *sheet = [UIAlertController
-        alertControllerWithTitle:song.name
-                         message:nil
-                  preferredStyle:UIAlertControllerStyleActionSheet];
-
+- (UIMenu *)menuForSong:(XC_YYSongData *)song {
     BOOL isLiked = [[XCPlaylistDatabaseManager sharedInstance]
                     isSong:song.songId inPlaylist:@"favorites"];
     NSString *likeTitle = isLiked ? @"从喜爱的歌曲移除" : @"加入喜爱的歌曲";
+    NSString *likeImageName = isLiked ? @"heart.slash" : @"heart";
 
-    [sheet addAction:[UIAlertAction actionWithTitle:likeTitle
-                                             style:UIAlertActionStyleDefault
-                                           handler:^(UIAlertAction *action) {
+    UIAction *likeAction = [UIAction actionWithTitle:likeTitle
+                                              image:[UIImage systemImageNamed:likeImageName]
+                                         identifier:nil
+                                            handler:^(__kindof UIAction *_) {
         if (isLiked) {
-            [[XCPlaylistDatabaseManager sharedInstance]
-                removeSong:song.songId fromPlaylist:@"favorites"];
+            [[XCPlaylistDatabaseManager sharedInstance] removeSong:song.songId fromPlaylist:@"favorites"];
         } else {
-            [[XCPlaylistDatabaseManager sharedInstance]
-                addSong:song toPlaylist:@"favorites"];
+            [[XCPlaylistDatabaseManager sharedInstance] addSong:song toPlaylist:@"favorites"];
         }
-    }]];
+    }];
 
-    __weak typeof(self) weakSelf = self;
-    [sheet addAction:[UIAlertAction actionWithTitle:@"加入播放列表…"
-                                             style:UIAlertActionStyleDefault
-                                           handler:^(UIAlertAction *action) {
-        [weakSelf showPlaylistPickerForSong:song];
-    }]];
-
-    [sheet addAction:[UIAlertAction actionWithTitle:@"取消"
-                                             style:UIAlertActionStyleCancel
-                                           handler:nil]];
-
-    [self presentViewController:sheet animated:YES completion:nil];
+    UIMenu *playlistMenu = [self playlistSubmenuForSong:song];
+    return [UIMenu menuWithTitle:song.name image:nil identifier:nil
+                         options:0 children:@[likeAction, playlistMenu]];
 }
 
-- (void)showPlaylistPickerForSong:(XC_YYSongData *)song {
+- (UIMenu *)playlistSubmenuForSong:(XC_YYSongData *)song {
     NSArray<XC_YYAlbumData *> *playlists =
-        [[XCPlaylistDatabaseManager sharedInstance]
-            getAllPlaylistsSortedBy:XCPlaylistSortByUpdateTime];
-
-    UIAlertController *picker = [UIAlertController
-        alertControllerWithTitle:@"选择播放列表"
-                         message:nil
-                  preferredStyle:UIAlertControllerStyleActionSheet];
-
+        [[XCPlaylistDatabaseManager sharedInstance] getAllPlaylistsSortedBy:XCPlaylistSortByUpdateTime];
+    NSMutableArray *actions = [NSMutableArray array];
     for (XC_YYAlbumData *playlist in playlists) {
-        [picker addAction:[UIAlertAction actionWithTitle:playlist.name
-                                                  style:UIAlertActionStyleDefault
-                                                handler:^(UIAlertAction *action) {
-            BOOL added = [[XCPlaylistDatabaseManager sharedInstance]
-                          addSong:song toPlaylist:playlist.albumId];
+        UIAction *action = [UIAction actionWithTitle:playlist.name image:nil identifier:nil
+                                            handler:^(__kindof UIAction *_) {
+            BOOL added = [[XCPlaylistDatabaseManager sharedInstance] addSong:song toPlaylist:playlist.albumId];
             if (!added) {
                 NSLog(@"[Playlist] 歌曲《%@》已在播放列表《%@》中", song.name, playlist.name);
             }
-        }]];
+        }];
+        [actions addObject:action];
     }
-
-    [picker addAction:[UIAlertAction actionWithTitle:@"取消"
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-
-    [self presentViewController:picker animated:YES completion:nil];
+    return [UIMenu menuWithTitle:@"加入播放列表…"
+                           image:[UIImage systemImageNamed:@"plus"]
+                      identifier:nil options:0 children:actions];
 }
 - (CGFloat) tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
   if (indexPath.row == 0) {

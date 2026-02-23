@@ -22,8 +22,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UILabel* durationLabel;
 /// 显示菜单
 @property (nonatomic, strong) UIButton* menuButton;
-/// 点击菜单按钮时执行的 block，参数为 songId
-@property (nonatomic, copy, nullable) void (^menuButtonBlock)(NSString *songId);
 @end
 
 NS_ASSUME_NONNULL_END

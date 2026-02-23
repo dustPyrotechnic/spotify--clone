@@ -18,8 +18,10 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
   // Override point for customization after application launch.
+
   [[XCAudioCacheManager sharedInstance] clearTempCache];
   [[XCAudioCacheManager sharedInstance] clearCompleteCache];
+
   return YES;
 }
 

@@ -105,9 +105,7 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     // ↑↓ 排序
     UIBarButtonItem *sortButton = [[UIBarButtonItem alloc]
         initWithImage:[UIImage systemImageNamed:@"arrow.up.arrow.down"]
-                style:UIBarButtonItemStylePlain
-               target:self
-               action:@selector(sortTapped)];
+                 menu:[self buildSortMenu]];
 
     self.navigationItem.rightBarButtonItems = @[addButton, toggleButton, sortButton];
 }
@@ -156,36 +154,22 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     toggleBtn.image = [UIImage systemImageNamed:imageName];
 }
 
-- (void)sortTapped {
-    UIAlertController *sheet = [UIAlertController
-        alertControllerWithTitle:@"排序方式"
-                         message:nil
-                  preferredStyle:UIAlertControllerStyleActionSheet];
-
+- (UIMenu *)buildSortMenu {
     __weak typeof(self) weakSelf = self;
-    [sheet addAction:[UIAlertAction actionWithTitle:@"最近更新"
-                                             style:UIAlertActionStyleDefault
-                                           handler:^(UIAlertAction *_) {
+    UIAction *byUpdateTime = [UIAction actionWithTitle:@"最近更新" image:nil identifier:nil handler:^(__kindof UIAction *_) {
         weakSelf.sortType = XCPlaylistSortByUpdateTime;
         [weakSelf reloadWithSort];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"最近创建"
-                                             style:UIAlertActionStyleDefault
-                                           handler:^(UIAlertAction *_) {
+    }];
+    UIAction *byCreateTime = [UIAction actionWithTitle:@"最近创建" image:nil identifier:nil handler:^(__kindof UIAction *_) {
         weakSelf.sortType = XCPlaylistSortByCreateTime;
         [weakSelf reloadWithSort];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"名称 A-Z"
-                                             style:UIAlertActionStyleDefault
-                                           handler:^(UIAlertAction *_) {
+    }];
+    UIAction *byName = [UIAction actionWithTitle:@"名称 A-Z" image:nil identifier:nil handler:^(__kindof UIAction *_) {
         weakSelf.sortType = XCPlaylistSortByName;
         [weakSelf reloadWithSort];
-    }]];
-    [sheet addAction:[UIAlertAction actionWithTitle:@"取消"
-                                             style:UIAlertActionStyleCancel
-                                           handler:nil]];
-
-    [self presentViewController:sheet animated:YES completion:nil];
+    }];
+    return [UIMenu menuWithTitle:@"排序方式" image:nil identifier:nil options:0
+                        children:@[byUpdateTime, byCreateTime, byName]];
 }
 
 - (void)reloadWithSort {

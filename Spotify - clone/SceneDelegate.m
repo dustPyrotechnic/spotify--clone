@@ -15,11 +15,7 @@
 
 #import "XCALbumDetailViewController.h"
 
-
-#import "XCAudioCachePhase1Test.h"
-#import "XCAudioCachePhase2Test.h"
 #import "XCAudioCacheTestRunner.h"
-#import "XCAudioCachePhase6Test.h"
 
 @interface SceneDelegate ()
 
