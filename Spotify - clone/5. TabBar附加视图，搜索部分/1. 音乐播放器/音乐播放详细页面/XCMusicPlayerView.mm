@@ -126,7 +126,14 @@
     [self.nexSongButton setImage:[UIImage systemImageNamed:@"forward.fill" withConfiguration:configuration] forState:UIControlStateNormal];
     self.nexSongButton.tintColor = [UIColor whiteColor];
     self.nexSongButton.contentMode = UIViewContentModeScaleAspectFit;
-    
+
+    // 初始化随机/顺序模式切换按钮
+    UIImageSymbolConfiguration *shuffleConfig = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightMedium];
+    self.shuffleModeButton = [[UIButton alloc] init];
+    [self.shuffleModeButton setImage:[UIImage systemImageNamed:@"shuffle" withConfiguration:shuffleConfig] forState:UIControlStateNormal];
+    self.shuffleModeButton.tintColor = [UIColor systemGray3Color];
+    self.shuffleModeButton.contentMode = UIViewContentModeScaleAspectFit;
+
     // 添加子视图
     [self addSubview:self.albumImage];
     [self addSubview:self.controlContainerView];
@@ -138,6 +145,7 @@
     [self.controlContainerView addSubview:self.preSongButton];
     [self.controlContainerView addSubview:self.nexSongButton];
     [self.controlContainerView addSubview:self.playOrStopButton];
+    [self.controlContainerView addSubview:self.shuffleModeButton];
     
     // 使用Masonry进行自动布局
     [self setupConstraints];
@@ -249,6 +257,11 @@
   }];
 
 
+  [self.shuffleModeButton mas_makeConstraints:^(MASConstraintMaker *make) {
+    make.right.equalTo(self.preSongButton.mas_left).offset(-30);
+    make.centerY.equalTo(self.preSongButton);
+    make.width.height.mas_equalTo(40);
+  }];
   [self.preSongButton mas_makeConstraints:^(MASConstraintMaker *make) {
     make.top.equalTo(self.mainSlider.mas_bottom).offset(30);
     make.right.equalTo(self.playOrStopButton.mas_left).offset(-50);

@@ -21,6 +21,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIButton* playButton;
 /// 随机按钮
 @property (nonatomic, strong) UIButton* randomButton;
+
+/// 点击播放按钮回调
+@property (nonatomic, copy) void (^onPlayButtonTapped)(void);
+/// 点击随机播放按钮回调
+@property (nonatomic, copy) void (^onShuffleButtonTapped)(void);
 @end
 
 NS_ASSUME_NONNULL_END

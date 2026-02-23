@@ -13,11 +13,19 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/// 播放模式
+typedef NS_ENUM(NSInteger, XCPlayMode) {
+    XCPlayModeSequential = 0,  ///< 顺序播放
+    XCPlayModeShuffle    = 1,  ///< 随机播放
+};
+
 // 通知常量定义
 /// 当前播放歌曲变更通知
 extern NSString * const XCMusicPlayerNowPlayingSongDidChangeNotification;
 /// 播放状态变更通知
 extern NSString * const XCMusicPlayerPlaybackStateDidChangeNotification;
+/// 播放模式变更通知
+extern NSString * const XCMusicPlayerPlayModeDidChangeNotification;
 
 @interface XCMusicPlayerModel : NSObject
 /// 全局的音乐播放器
@@ -28,6 +36,8 @@ extern NSString * const XCMusicPlayerPlaybackStateDidChangeNotification;
 @property (nonatomic, strong) XC_YYSongData* nowPlayingSong;
 /// 播放状态（YES: 正在播放, NO: 暂停）
 @property (nonatomic, assign, readonly) BOOL isPlaying;
+/// 播放模式
+@property (nonatomic, assign) XCPlayMode playMode;
 
 // Phase 8: 预加载触发标记（内部使用）
 @property (nonatomic, assign) BOOL hasTriggeredPreload;

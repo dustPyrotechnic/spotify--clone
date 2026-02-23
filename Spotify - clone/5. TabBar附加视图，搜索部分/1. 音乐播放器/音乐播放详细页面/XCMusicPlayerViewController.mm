@@ -39,6 +39,9 @@
     // 设置播放按钮响应
     [self.mainView.playOrStopButton addTarget:self action:@selector(handleTouchDownButton) forControlEvents:UIControlEventTouchDown];
     [self.mainView.playOrStopButton addTarget:self action:@selector(pressPlayOrStopButton) forControlEvents:UIControlEventTouchUpInside];
+
+    // 设置随机/顺序模式按钮响应
+    [self.mainView.shuffleModeButton addTarget:self action:@selector(pressShuffle) forControlEvents:UIControlEventTouchUpInside];
     
     // 设置进度条事件监听（Phase A：进度条拖动播放）
     [self setupSliderEventHandlers];
@@ -53,6 +56,9 @@
     // 注册通知监听
     [self registerNotifications];
     
+    // 同步 shuffle 按钮初始状态
+    [self updateShuffleButtonState:self.musicPlayerModel.playMode];
+
     // 如果已有正在播放的歌曲，立即显示
     NSLog(@"[MusicPlayerVC] 检查是否有正在播放的歌曲");
     if (self.musicPlayerModel.nowPlayingSong) {
@@ -90,6 +96,12 @@
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(handlePlaybackStateDidChange:)
                                                  name:XCMusicPlayerPlaybackStateDidChangeNotification
+                                               object:nil];
+
+    // 监听播放模式变更
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handlePlayModeDidChange:)
+                                                 name:XCMusicPlayerPlayModeDidChangeNotification
                                                object:nil];
 }
 
@@ -339,5 +351,28 @@
     // Pass the selected object to the new view controller.
 }
 */
+
+#pragma mark - 播放模式
+
+- (void)pressShuffle {
+    XCMusicPlayerModel *m = [XCMusicPlayerModel sharedInstance];
+    m.playMode = (m.playMode == XCPlayModeSequential) ? XCPlayModeShuffle : XCPlayModeSequential;
+    UIImpactFeedbackGenerator *f = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [f impactOccurred];
+}
+
+- (void)updateShuffleButtonState:(XCPlayMode)mode {
+    BOOL isShuffle = (mode == XCPlayModeShuffle);
+    self.mainView.shuffleModeButton.tintColor = isShuffle
+        ? [UIColor systemGreenColor]
+        : [UIColor systemGray3Color];
+}
+
+- (void)handlePlayModeDidChange:(NSNotification *)note {
+    XCPlayMode mode = (XCPlayMode)[note.userInfo[@"playMode"] integerValue];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self updateShuffleButtonState:mode];
+    });
+}
 
 @end

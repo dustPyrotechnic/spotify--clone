@@ -40,8 +40,9 @@
     self.refreshDateLabel.numberOfLines = 1;
 
     // 初始化播放按钮
+    __weak typeof(self) weakSelf = self;
     UIAction* playAction = [UIAction actionWithTitle:@"播放" image:[UIImage systemImageNamed:@"play.fill"] identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
-      NSLog(@"播放该列表");
+      if (weakSelf.onPlayButtonTapped) { weakSelf.onPlayButtonTapped(); }
     }];
     self.playButton = [UIButton buttonWithConfiguration:[UIButtonConfiguration filledButtonConfiguration] primaryAction:playAction];
     self.playButton.configuration.baseBackgroundColor = [UIColor systemGreenColor];
@@ -61,7 +62,7 @@
 
     // 初始化随机播放按钮
     UIAction* randomAction = [UIAction actionWithTitle:@"随机播放" image:[UIImage systemImageNamed:@"shuffle"] identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
-      NSLog(@"随机播放该列表");
+      if (weakSelf.onShuffleButtonTapped) { weakSelf.onShuffleButtonTapped(); }
     }];
     self.randomButton = [UIButton buttonWithConfiguration:[UIButtonConfiguration filledButtonConfiguration] primaryAction:randomAction];
     self.randomButton.configuration.baseBackgroundColor = [UIColor systemGreenColor];
@@ -79,11 +80,11 @@
     self.randomButton.tintColor = [UIColor systemGreenColor];
 
     // 添加子视图
-    [self addSubview:self.albumImageView];
-    [self addSubview:self.titleLabel];
-    [self addSubview:self.refreshDateLabel];
-    [self addSubview:self.playButton];
-    [self addSubview:self.randomButton];
+    [self.contentView addSubview:self.albumImageView];
+    [self.contentView addSubview:self.titleLabel];
+    [self.contentView addSubview:self.refreshDateLabel];
+    [self.contentView addSubview:self.playButton];
+    [self.contentView addSubview:self.randomButton];
 
     // 设置约束
     [self setupConstraints];
@@ -91,11 +92,11 @@
   return self;
 }
 - (void) layoutSubviews {
-  [self setupConstraints];
+  [super layoutSubviews];
 }
 - (void) setupConstraints {
   // 专辑封面约束 - 顶部中央
-  [self.albumImageView mas_makeConstraints:^(MASConstraintMaker *make) {
+  [self.albumImageView mas_remakeConstraints:^(MASConstraintMaker *make) {
     make.top.equalTo(self.mas_safeAreaLayoutGuideTop).offset(20);
     make.centerX.equalTo(self);
     make.width.equalTo(self).multipliedBy(0.65);
@@ -103,7 +104,7 @@
   }];
 
   // 标题标签约束 - 封面下方，竖直排列
-  [self.titleLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+  [self.titleLabel mas_remakeConstraints:^(MASConstraintMaker *make) {
     make.top.equalTo(self.albumImageView.mas_bottom).offset(24);
     make.left.equalTo(self).offset(20);
     make.right.equalTo(self).offset(-20);
@@ -111,7 +112,7 @@
   }];
 
   // 更新时间标签约束 - 标题下方
-  [self.refreshDateLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+  [self.refreshDateLabel mas_remakeConstraints:^(MASConstraintMaker *make) {
     make.top.equalTo(self.titleLabel.mas_bottom).offset(8);
     make.left.equalTo(self).offset(20);
     make.right.equalTo(self).offset(-20);
@@ -119,7 +120,7 @@
   }];
 
   // 播放按钮约束 - 更新时间下方，左侧
-  [self.playButton mas_makeConstraints:^(MASConstraintMaker *make) {
+  [self.playButton mas_remakeConstraints:^(MASConstraintMaker *make) {
     make.top.equalTo(self.refreshDateLabel.mas_bottom).offset(24);
     make.left.equalTo(self).offset(20);
     make.right.equalTo(self.mas_centerX).offset(-8);
@@ -127,7 +128,7 @@
   }];
 
   // 随机播放按钮约束 - 更新时间下方，右侧，与播放按钮并排
-  [self.randomButton mas_makeConstraints:^(MASConstraintMaker *make) {
+  [self.randomButton mas_remakeConstraints:^(MASConstraintMaker *make) {
     make.top.equalTo(self.refreshDateLabel.mas_bottom).offset(24);
     make.left.equalTo(self.mas_centerX).offset(8);
     make.right.equalTo(self).offset(-20);

@@ -32,6 +32,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIButton* nexSongButton;
 /// 播放或暂停按钮
 @property (nonatomic, strong) UIButton* playOrStopButton;
+/// 随机/顺序播放模式切换按钮
+@property (nonatomic, strong) UIButton* shuffleModeButton;
 
 // 辅助动画效果
 @property (nonatomic, assign) CGAffineTransform scaleTransform;

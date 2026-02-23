@@ -82,6 +82,32 @@
     // 测试
     cell.refreshDateLabel.text = @"一周前";
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
+
+    __weak typeof(self) weakSelf = self;
+
+    // 播放按钮：顺序播放，从第一首开始
+    cell.onPlayButtonTapped = ^{
+        if (!weakSelf.model.playerList.count) return;
+        XCMusicPlayerModel *m = [XCMusicPlayerModel sharedInstance];
+        m.playerlist = weakSelf.model.playerList;
+        m.playMode = XCPlayModeSequential;
+        XC_YYSongData *first = weakSelf.model.playerList.firstObject;
+        m.nowPlayingSong = first;
+        [m playMusicWithId:first.songId];
+    };
+
+    // 随机播放按钮：开启随机模式，从随机一首开始
+    cell.onShuffleButtonTapped = ^{
+        if (!weakSelf.model.playerList.count) return;
+        XCMusicPlayerModel *m = [XCMusicPlayerModel sharedInstance];
+        m.playerlist = weakSelf.model.playerList;
+        m.playMode = XCPlayModeShuffle;
+        NSUInteger randomIdx = arc4random_uniform((uint32_t)weakSelf.model.playerList.count);
+        XC_YYSongData *randomSong = weakSelf.model.playerList[randomIdx];
+        m.nowPlayingSong = randomSong;
+        [m playMusicWithId:randomSong.songId];
+    };
+
     return cell;
   } else {
     XCAlbumDetailCell *cell = [tableView dequeueReusableCellWithIdentifier:@"XCAlbumDetailCell"];

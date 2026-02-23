@@ -26,6 +26,7 @@
 // 通知常量定义
 NSString * const XCMusicPlayerNowPlayingSongDidChangeNotification = @"XCMusicPlayerNowPlayingSongDidChangeNotification";
 NSString * const XCMusicPlayerPlaybackStateDidChangeNotification = @"XCMusicPlayerPlaybackStateDidChangeNotification";
+NSString * const XCMusicPlayerPlayModeDidChangeNotification = @"XCMusicPlayerPlayModeDidChangeNotification";
 
 @interface XCMusicPlayerModel ()
 /// 锁屏进度更新定时器
@@ -67,11 +68,19 @@ static XCMusicPlayerModel *instance = nil;
     NSLog(@"[PlayerModel] 当前歌曲变更: %@ -> %@", _nowPlayingSong.name ?: @"无", nowPlayingSong.name);
     _nowPlayingSong = nowPlayingSong;
     [self updateLockScreenInfo];
-    
+
     // 发送歌曲变更通知
     [[NSNotificationCenter defaultCenter] postNotificationName:XCMusicPlayerNowPlayingSongDidChangeNotification
                                                         object:self
                                                       userInfo:@{@"song": nowPlayingSong ?: [NSNull null]}];
+}
+- (void)setPlayMode:(XCPlayMode)playMode {
+    if (_playMode == playMode) return;
+    _playMode = playMode;
+    NSLog(@"[PlayerModel] 播放模式变更: %@", playMode == XCPlayModeShuffle ? @"随机" : @"顺序");
+    [[NSNotificationCenter defaultCenter] postNotificationName:XCMusicPlayerPlayModeDidChangeNotification
+                                                        object:self
+                                                      userInfo:@{@"playMode": @(playMode)}];
 }
 #pragma mark - 音乐测试播放部分代码
 - (void)testPlaySpotifySong {
@@ -595,10 +604,21 @@ static XCMusicPlayerModel *instance = nil;
     }
     
     // 计算下一首
-    NSInteger nextIndex = (currentIndex + 1) % self.playerlist.count;
+    NSInteger nextIndex;
+    if (self.playMode == XCPlayModeShuffle && self.playerlist.count > 1) {
+        // 随机模式：随机选一首（排除当前曲目）
+        NSInteger randomIndex;
+        do {
+            randomIndex = (NSInteger)arc4random_uniform((uint32_t)self.playerlist.count);
+        } while (randomIndex == currentIndex);
+        nextIndex = randomIndex;
+    } else {
+        // 顺序模式
+        nextIndex = (currentIndex + 1) % self.playerlist.count;
+    }
     XC_YYSongData *nextSong = self.playerlist[nextIndex];
     self.nowPlayingSong = nextSong;
-    
+
     NSLog(@"[PlayerModel] 下一首索引: %lu, 歌曲: %@",
           (unsigned long)nextIndex, nextSong.name);
     

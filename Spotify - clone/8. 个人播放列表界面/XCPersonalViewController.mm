@@ -225,6 +225,14 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     cell.titleLabel.text = playlist.name;
     cell.subtitleLabel.text = [NSString stringWithFormat:@"歌单 · %ld 首歌", (long)playlist.songCount];
 
+    // 清理旧的 gradient layer 和心形图标（防止复用问题）
+    [self clearGradientFromView:cell.mainImageView];
+    [cell.mainImageView.subviews enumerateObjectsUsingBlock:^(UIView *v, NSUInteger i, BOOL *stop) {
+        if (v.tag == 999) [v removeFromSuperview];
+    }];
+    // 取消之前的图片下载
+    [cell.mainImageView sd_cancelCurrentImageLoad];
+
     if (playlist.isFavorites) {
         // 喜爱的歌曲：心形图标 + 紫粉渐变背景
         cell.mainImageView.image = nil;
@@ -235,9 +243,6 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
         heartView.tintColor = [UIColor whiteColor];
         heartView.contentMode = UIViewContentModeScaleAspectFit;
         heartView.tag = 999;
-        [cell.mainImageView.subviews enumerateObjectsUsingBlock:^(UIView *v, NSUInteger i, BOOL *stop) {
-            if (v.tag == 999) [v removeFromSuperview];
-        }];
         [cell.mainImageView addSubview:heartView];
         heartView.frame = CGRectInset(cell.mainImageView.bounds, 10, 10);
         heartView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -252,12 +257,9 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
 }
 
 - (void)applyGradientToView:(UIView *)view {
-    // 删除旧 gradient layer
-    for (CALayer *layer in [view.layer.sublayers copy]) {
-        if ([layer isKindOfClass:[CAGradientLayer class]]) {
-            [layer removeFromSuperlayer];
-        }
-    }
+    // 先清理旧的 gradient layer
+    [self clearGradientFromView:view];
+    
     CAGradientLayer *gradient = [CAGradientLayer layer];
     gradient.frame = CGRectMake(0, 0, 56, 56);
     gradient.colors = @[
@@ -268,6 +270,15 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     gradient.endPoint = CGPointMake(1, 1);
     gradient.cornerRadius = 4;
     [view.layer insertSublayer:gradient atIndex:0];
+}
+
+- (void)clearGradientFromView:(UIView *)view {
+    // 删除所有 gradient layer
+    for (CALayer *layer in [view.layer.sublayers copy]) {
+        if ([layer isKindOfClass:[CAGradientLayer class]]) {
+            [layer removeFromSuperlayer];
+        }
+    }
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
@@ -310,6 +321,11 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     XC_YYAlbumData *playlist = self.model.playlists[indexPath.item];
     cell.nameLabel.text = playlist.name;
 
+    // 清理旧的 gradient layer（防止复用问题）
+    [self clearGradientFromView:cell.coverImageView];
+    // 取消之前的图片下载
+    [cell.coverImageView sd_cancelCurrentImageLoad];
+
     if (playlist.isFavorites) {
         cell.coverImageView.image = nil;
         [self applyGradientToCollectionCell:cell];
@@ -325,11 +341,9 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
 }
 
 - (void)applyGradientToCollectionCell:(XCPersonalCollectionViewCell *)cell {
-    for (CALayer *layer in [cell.coverImageView.layer.sublayers copy]) {
-        if ([layer isKindOfClass:[CAGradientLayer class]]) {
-            [layer removeFromSuperlayer];
-        }
-    }
+    // 先清理旧的 gradient layer
+    [self clearGradientFromView:cell.coverImageView];
+    
     CAGradientLayer *gradient = [CAGradientLayer layer];
     gradient.frame = cell.coverImageView.bounds;
     gradient.colors = @[
