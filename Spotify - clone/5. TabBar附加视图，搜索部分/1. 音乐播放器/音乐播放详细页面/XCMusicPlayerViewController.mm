@@ -236,8 +236,8 @@
     NSString *timeText = [self formatTime:targetTime];
     NSLog(@"[MusicPlayerVC] 🎚️ 拖动中: %@ (%.1fs)", timeText, targetTime);
     
-    // TODO: 如有时间标签，可在此更新
-    // self.mainView.currentTimeLabel.text = timeText;
+    // 实时更新时间标签
+    [self.mainView updateCurrentTime:targetTime];
 }
 
 /// TouchUp - 执行跳转并恢复
@@ -340,6 +340,9 @@
     // 更新滑块位置
     CGFloat progress = currentTime / duration;
     self.mainView.mainSlider.value = progress;
+    
+    // 更新当前时间标签
+    [self.mainView updateCurrentTime:currentTime];
 }
 
 /*
@@ -364,8 +367,8 @@
 - (void)updateShuffleButtonState:(XCPlayMode)mode {
     BOOL isShuffle = (mode == XCPlayModeShuffle);
     self.mainView.shuffleModeButton.tintColor = isShuffle
-        ? [UIColor systemGreenColor]
-        : [UIColor systemGray3Color];
+        ? [UIColor whiteColor]
+        : [UIColor colorWithWhite:1.0 alpha:0.5];
 }
 
 - (void)handlePlayModeDidChange:(NSNotification *)note {

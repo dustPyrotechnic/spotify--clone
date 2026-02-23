@@ -31,13 +31,18 @@
     self.albumImage.image = self.image;
     self.albumImage.contentMode = UIViewContentModeScaleAspectFill;
     self.albumImage.clipsToBounds = YES;
-    self.albumImage.layer.cornerRadius = 20;
+    self.albumImage.layer.cornerRadius = 12;
     self.albumImage.layer.masksToBounds = YES;
     self.albumImage.backgroundColor = [UIColor systemGray5Color];
 
     self.containerImageView = [[UIView alloc] init];
-    self.containerImageView.layer.cornerRadius = 20;
-    self.containerImageView.backgroundColor = [UIColor whiteColor];
+    self.containerImageView.layer.cornerRadius = 12;
+    self.containerImageView.backgroundColor = [UIColor clearColor];
+    // 添加柔和的阴影效果
+    self.containerImageView.layer.shadowColor = [UIColor blackColor].CGColor;
+    self.containerImageView.layer.shadowOffset = CGSizeMake(0, 8);
+    self.containerImageView.layer.shadowRadius = 20;
+    self.containerImageView.layer.shadowOpacity = 0.3;
     [self addSubview:self.containerImageView];
 
     // 初始化放置控制元件的容器视图
@@ -95,44 +100,69 @@
     [self.songNameContainerScrollView addSubview:self.songNameLabel];
     [self.authorNameContainerScrollView addSubview:self.authorNameLabel];
 
-    // 初始化进度条
+    // 初始化进度条 - 优化样式
     self.mainSlider = [[UISlider alloc] init];
     self.mainSlider.sliderStyle = UISliderStyleThumbless;
-
-    self.mainSlider.alpha = 0.5;
-
+    self.mainSlider.alpha = 1.0;
     self.mainSlider.minimumValue = 0.0;
     self.mainSlider.maximumValue = 1.0;
     self.mainSlider.value = 0.0;
-    self.mainSlider.tintColor = [UIColor systemGray4Color];
-    self.mainSlider.minimumTrackTintColor = [UIColor systemGray6Color];
-    self.mainSlider.maximumTrackTintColor = [UIColor systemGray2Color];
+    // 优化进度条颜色 - 使用白色系增加对比度
+    self.mainSlider.minimumTrackTintColor = [UIColor whiteColor];
+    self.mainSlider.maximumTrackTintColor = [UIColor colorWithWhite:1.0 alpha:0.3];
+    
+    // 初始化时间标签
+    self.currentTimeLabel = [[UILabel alloc] init];
+    self.currentTimeLabel.font = [UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightMedium];
+    self.currentTimeLabel.textColor = [UIColor colorWithWhite:0.85 alpha:0.9];
+    self.currentTimeLabel.text = @"0:00";
+    self.currentTimeLabel.textAlignment = NSTextAlignmentLeft;
+    
+    self.totalTimeLabel = [[UILabel alloc] init];
+    self.totalTimeLabel.font = [UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightMedium];
+    self.totalTimeLabel.textColor = [UIColor colorWithWhite:0.85 alpha:0.9];
+    self.totalTimeLabel.text = @"0:00";
+    self.totalTimeLabel.textAlignment = NSTextAlignmentRight;
 
     UIImageSymbolConfiguration* configuration = [UIImageSymbolConfiguration configurationWithFont:[UIFont boldSystemFontOfSize:40]];
-    // 初始化上一首按钮
+    // 初始化上一首按钮 - 添加按压效果
     self.preSongButton = [[UIButton alloc] init];
-    [self.preSongButton setImage:[UIImage systemImageNamed:@"backward.fill" withConfiguration:configuration] forState:UIControlStateNormal];
+    UIImageSymbolConfiguration* smallConfig = [UIImageSymbolConfiguration configurationWithFont:[UIFont systemFontOfSize:22 weight:UIFontWeightMedium]];
+    [self.preSongButton setImage:[UIImage systemImageNamed:@"backward.fill" withConfiguration:smallConfig] forState:UIControlStateNormal];
     self.preSongButton.tintColor = [UIColor whiteColor];
     self.preSongButton.contentMode = UIViewContentModeScaleAspectFit;
+    [self addButtonPressEffect:self.preSongButton];
     
-    // 初始化播放/暂停按钮
+    // 初始化播放/暂停按钮 - 圆形背景，更突出
+    self.playButtonBackground = [[UIView alloc] init];
+    self.playButtonBackground.backgroundColor = [UIColor whiteColor];
+    self.playButtonBackground.layer.cornerRadius = 35;
+    self.playButtonBackground.layer.shadowColor = [UIColor blackColor].CGColor;
+    self.playButtonBackground.layer.shadowOffset = CGSizeMake(0, 4);
+    self.playButtonBackground.layer.shadowRadius = 8;
+    self.playButtonBackground.layer.shadowOpacity = 0.2;
+    
     self.playOrStopButton = [[UIButton alloc] init];
-    [self.playOrStopButton setImage:[UIImage systemImageNamed:@"play.fill" withConfiguration:configuration] forState:UIControlStateNormal];
-    self.playOrStopButton.tintColor = [UIColor whiteColor];
+    UIImageSymbolConfiguration* playConfig = [UIImageSymbolConfiguration configurationWithFont:[UIFont systemFontOfSize:28 weight:UIFontWeightBold]];
+    [self.playOrStopButton setImage:[UIImage systemImageNamed:@"play.fill" withConfiguration:playConfig] forState:UIControlStateNormal];
+    self.playOrStopButton.tintColor = [UIColor blackColor]; // 黑色图标在白色背景上
     self.playOrStopButton.contentMode = UIViewContentModeScaleAspectFit;
+    [self addButtonPressEffect:self.playOrStopButton];
     
-    // 初始化下一首按钮
+    // 初始化下一首按钮 - 添加按压效果
     self.nexSongButton = [[UIButton alloc] init];
-    [self.nexSongButton setImage:[UIImage systemImageNamed:@"forward.fill" withConfiguration:configuration] forState:UIControlStateNormal];
+    [self.nexSongButton setImage:[UIImage systemImageNamed:@"forward.fill" withConfiguration:smallConfig] forState:UIControlStateNormal];
     self.nexSongButton.tintColor = [UIColor whiteColor];
     self.nexSongButton.contentMode = UIViewContentModeScaleAspectFit;
+    [self addButtonPressEffect:self.nexSongButton];
 
-    // 初始化随机/顺序模式切换按钮
-    UIImageSymbolConfiguration *shuffleConfig = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightMedium];
+    // 初始化随机/顺序模式切换按钮 - 添加按压效果
+    UIImageSymbolConfiguration *shuffleConfig = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightMedium];
     self.shuffleModeButton = [[UIButton alloc] init];
     [self.shuffleModeButton setImage:[UIImage systemImageNamed:@"shuffle" withConfiguration:shuffleConfig] forState:UIControlStateNormal];
-    self.shuffleModeButton.tintColor = [UIColor systemGray3Color];
+    self.shuffleModeButton.tintColor = [UIColor colorWithWhite:1.0 alpha:0.6];
     self.shuffleModeButton.contentMode = UIViewContentModeScaleAspectFit;
+    [self addButtonPressEffect:self.shuffleModeButton];
 
     // 添加子视图
     [self addSubview:self.albumImage];
@@ -142,10 +172,16 @@
     [self.controlContainerView addSubview:self.songNameContainerScrollView];
     [self.controlContainerView addSubview:self.authorNameContainerScrollView];
     [self.controlContainerView addSubview:self.mainSlider];
+    [self.controlContainerView addSubview:self.currentTimeLabel];
+    [self.controlContainerView addSubview:self.totalTimeLabel];
+    [self.controlContainerView addSubview:self.playButtonBackground];
     [self.controlContainerView addSubview:self.preSongButton];
     [self.controlContainerView addSubview:self.nexSongButton];
     [self.controlContainerView addSubview:self.playOrStopButton];
     [self.controlContainerView addSubview:self.shuffleModeButton];
+    
+    // 添加播放按钮背景的子视图关系
+    [self.controlContainerView insertSubview:self.playButtonBackground belowSubview:self.playOrStopButton];
     
     // 使用Masonry进行自动布局
     [self setupConstraints];
@@ -246,41 +282,80 @@
     make.width.mas_equalTo(200);
     make.height.equalTo(self.authorNameLabel.mas_height);
   }];
-  // 滑动条布局
+  // 滑动条布局 - 优化位置
   [self.mainSlider mas_makeConstraints:^(MASConstraintMaker *make) {
-    make.top.equalTo(self.songNameContainerScrollView.mas_bottom).offset(30);
-//    make.left.equalTo(self.controlContainerView).offset(30);
-//    make.right.equalTo(self.controlContainerView).offset(-30);
+    make.top.equalTo(self.authorNameContainerScrollView.mas_bottom).offset(40);
     make.width.mas_equalTo(self.controlContainerView.mas_width).multipliedBy(0.85);
     make.centerX.equalTo(self.controlContainerView);
-    make.height.mas_equalTo(30);
+    make.height.mas_equalTo(24);
   }];
-
-
-  [self.shuffleModeButton mas_makeConstraints:^(MASConstraintMaker *make) {
-    make.right.equalTo(self.preSongButton.mas_left).offset(-30);
-    make.centerY.equalTo(self.preSongButton);
-    make.width.height.mas_equalTo(40);
-  }];
-  [self.preSongButton mas_makeConstraints:^(MASConstraintMaker *make) {
-    make.top.equalTo(self.mainSlider.mas_bottom).offset(30);
-    make.right.equalTo(self.playOrStopButton.mas_left).offset(-50);
+  
+  // 时间标签布局
+  [self.currentTimeLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+    make.top.equalTo(self.mainSlider.mas_bottom).offset(4);
+    make.left.equalTo(self.mainSlider);
+    make.height.mas_equalTo(16);
     make.width.mas_equalTo(50);
-    make.height.mas_equalTo(50);
   }];
-  [self.playOrStopButton mas_makeConstraints:^(MASConstraintMaker *make) {
-    make.top.equalTo(self.mainSlider.mas_bottom).offset(30);
-//    make.left.equalTo(self.preSongButton).offset(30);
+  
+  [self.totalTimeLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+    make.top.equalTo(self.mainSlider.mas_bottom).offset(4);
+    make.right.equalTo(self.mainSlider);
+    make.height.mas_equalTo(16);
+    make.width.mas_equalTo(50);
+  }];
+
+  // 播放按钮背景（圆形）
+  [self.playButtonBackground mas_makeConstraints:^(MASConstraintMaker *make) {
     make.centerX.equalTo(self.controlContainerView);
-    make.width.mas_equalTo(50);
-    make.height.mas_equalTo(50);
+    make.centerY.equalTo(self.playOrStopButton);
+    make.width.height.mas_equalTo(70);
   }];
+
+  // 控制按钮布局 - 优化间距和层级
+  [self.shuffleModeButton mas_makeConstraints:^(MASConstraintMaker *make) {
+    make.right.equalTo(self.preSongButton.mas_left).offset(-40);
+    make.centerY.equalTo(self.playOrStopButton);
+    make.width.height.mas_equalTo(44);
+  }];
+  
+  [self.preSongButton mas_makeConstraints:^(MASConstraintMaker *make) {
+    make.centerY.equalTo(self.playOrStopButton);
+    make.right.equalTo(self.playOrStopButton.mas_left).offset(-50);
+    make.width.height.mas_equalTo(44);
+  }];
+  
+  [self.playOrStopButton mas_makeConstraints:^(MASConstraintMaker *make) {
+    make.top.equalTo(self.currentTimeLabel.mas_bottom).offset(35);
+    make.centerX.equalTo(self.controlContainerView);
+    make.width.height.mas_equalTo(70);
+  }];
+  
   [self.nexSongButton mas_makeConstraints:^(MASConstraintMaker *make) {
-    make.top.equalTo(self.mainSlider.mas_bottom).offset(30);
+    make.centerY.equalTo(self.playOrStopButton);
     make.left.equalTo(self.playOrStopButton.mas_right).offset(50);
-    make.width.mas_equalTo(50);
-    make.height.mas_equalTo(50);
+    make.width.height.mas_equalTo(44);
   }];
+}
+
+#pragma mark - 按钮按压效果
+
+- (void)addButtonPressEffect:(UIButton *)button {
+    // 添加按钮按压时的缩放效果
+    [button addTarget:self action:@selector(buttonTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(buttonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+}
+
+- (void)buttonTouchDown:(UIButton *)button {
+    [UIView animateWithDuration:0.1 animations:^{
+        button.transform = CGAffineTransformMakeScale(0.9, 0.9);
+    }];
+}
+
+- (void)buttonTouchUp:(UIButton *)button {
+    [UIView animateWithDuration:0.1 animations:^{
+        button.transform = CGAffineTransformIdentity;
+    }];
 }
 #pragma mark - 动画效果
 
@@ -288,29 +363,23 @@
   [UIView animateWithDuration:0.5 animations:^{
     self.albumImage.transform = self.scaleTransform;
     self.containerImageView.transform = self.scaleTransform;
-    self.containerImageView.layer.shadowColor = [UIColor blackColor].CGColor;
-    self.containerImageView.layer.shadowOffset = CGSizeMake(0, 10);
-    self.containerImageView.layer.shadowOpacity = 0.5; 
-    self.containerImageView.layer.shadowRadius = 10;
-    self.containerImageView.layer.masksToBounds = NO;
+    // 播放时增强阴影效果
+    self.containerImageView.layer.shadowOffset = CGSizeMake(0, 15);
+    self.containerImageView.layer.shadowOpacity = 0.4; 
+    self.containerImageView.layer.shadowRadius = 25;
   }];
-
-
-
 }
+
 - (void) letAlbumImageSmall {
   // 恢复原始大小
   [UIView animateWithDuration:0.5 animations:^{
     self.albumImage.transform = CGAffineTransformIdentity;
     self.containerImageView.transform = CGAffineTransformIdentity;
-    // 恢复阴影
-//    self.containerImageView.layer.shadowColor = [UIColor clearColor].CGColor;
-    self.containerImageView.layer.shadowOffset = CGSizeMake(0, 0);
-    self.containerImageView.layer.shadowOpacity = 0;
-    self.containerImageView.layer.shadowRadius = 0;
-//    self.containerImageView.layer.masksToBounds = YES;
+    // 暂停时恢复柔和阴影
+    self.containerImageView.layer.shadowOffset = CGSizeMake(0, 8);
+    self.containerImageView.layer.shadowOpacity = 0.3;
+    self.containerImageView.layer.shadowRadius = 20;
   }];
-
 }
 
 #pragma mark - 配置方法
@@ -333,6 +402,13 @@
     self.authorNameLabel.text = song.artist ?: @"未知艺术家";
     NSLog(@"[MusicPlayerView] 艺术家已设置");
     
+    // 更新总时长标签
+    if (song.duration > 0) {
+        self.totalTimeLabel.text = [self formatTimeInterval:song.duration / 1000.0];
+    } else {
+        self.totalTimeLabel.text = @"0:00";
+    }
+    
     // 使用 SDWebImage 加载专辑封面
     if (song.mainIma) {
         NSLog(@"[MusicPlayerView] 开始加载专辑封面: %@", song.mainIma);
@@ -354,6 +430,22 @@
         }];
     }
     // 不在这里直接调用 updateBackgroundGradient，交给 layoutSubviews 处理
+}
+
+#pragma mark - 时间格式化
+
+/// 格式化时间显示 (秒 -> mm:ss)
+- (NSString *)formatTimeInterval:(NSTimeInterval)timeInterval {
+    NSInteger minutes = (NSInteger)timeInterval / 60;
+    NSInteger seconds = (NSInteger)timeInterval % 60;
+    return [NSString stringWithFormat:@"%ld:%02ld", (long)minutes, (long)seconds];
+}
+
+#pragma mark - 公开方法
+
+/// 更新当前时间显示
+- (void)updateCurrentTime:(NSTimeInterval)currentTime {
+    self.currentTimeLabel.text = [self formatTimeInterval:currentTime];
 }
 
 - (void)updateBackgroundGradient {

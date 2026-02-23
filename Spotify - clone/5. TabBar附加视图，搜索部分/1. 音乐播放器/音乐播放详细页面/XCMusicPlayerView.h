@@ -26,6 +26,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIView* controlContainerView;
 /// 主滑块
 @property (nonatomic, strong) UISlider* mainSlider;
+/// 当前时间标签
+@property (nonatomic, strong) UILabel* currentTimeLabel;
+/// 总时长标签
+@property (nonatomic, strong) UILabel* totalTimeLabel;
 /// 上一首按钮
 @property (nonatomic, strong) UIButton* preSongButton;
 /// 下一首按钮
@@ -34,6 +38,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIButton* playOrStopButton;
 /// 随机/顺序播放模式切换按钮
 @property (nonatomic, strong) UIButton* shuffleModeButton;
+/// 播放按钮背景视图（用于美化）
+@property (nonatomic, strong) UIView* playButtonBackground;
 
 // 辅助动画效果
 @property (nonatomic, assign) CGAffineTransform scaleTransform;
@@ -45,6 +51,9 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - 配置方法
 /// 根据歌曲数据配置视图
 - (void)configureWithSong:(XC_YYSongData *)song;
+
+/// 更新当前时间显示
+- (void)updateCurrentTime:(NSTimeInterval)currentTime;
 @end
 
 NS_ASSUME_NONNULL_END
