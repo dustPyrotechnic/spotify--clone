@@ -609,7 +609,11 @@ static NSArray<NSString *> *XCHotSearchTerms(void) {
     }
     
     // 3. 分隔线后是播放相关
-    [actions addObject:[UIMenu menuWithTitle:@"" options:UIMenuOptionsDisplayInline children:@[
+    [actions addObject:[UIMenu menuWithTitle:@""
+                                       image:nil
+                                  identifier:nil
+                                     options:UIMenuOptionsDisplayInline
+                                    children:@[
         [UIAction actionWithTitle:@"下一首播放"
                             image:[UIImage systemImageNamed:@"text.line.first.and.arrowtriangle.forward"]
                        identifier:nil
@@ -684,7 +688,9 @@ static NSArray<NSString *> *XCHotSearchTerms(void) {
     
     return [UIMenu menuWithTitle:@"添加到播放列表"
                            image:[UIImage systemImageNamed:@"text.badge.plus"]
-                      children:playlistActions];
+                      identifier:nil
+                         options:0
+                        children:playlistActions];
 }
 
 #pragma mark - Menu Actions

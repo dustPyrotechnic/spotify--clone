@@ -1,0 +1,2 @@
+Target dependency graph (1 target)
+Target 'Spotify - clone' in project 'Spotify - clone' (no dependencies)
