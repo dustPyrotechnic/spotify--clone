@@ -34,8 +34,13 @@
     
     // 容器视图
     _containerView = [[UIView alloc] init];
-    _containerView.layer.cornerRadius = 10;
+    _containerView.layer.cornerRadius = 12;
     _containerView.layer.masksToBounds = YES;
+    // 添加阴影效果
+    self.contentView.layer.shadowColor = [UIColor blackColor].CGColor;
+    self.contentView.layer.shadowOffset = CGSizeMake(0, 2);
+    self.contentView.layer.shadowRadius = 4;
+    self.contentView.layer.shadowOpacity = 0.1;
     [self.contentView addSubview:_containerView];
     
     [_containerView mas_makeConstraints:^(MASConstraintMaker *make) {
@@ -63,9 +68,11 @@
     
     // 标题标签
     _nameLabel = [[UILabel alloc] init];
-    _nameLabel.font = [UIFont boldSystemFontOfSize:16];
+    _nameLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightBold];
     _nameLabel.textColor = UIColor.whiteColor;
     _nameLabel.numberOfLines = 2;
+    _nameLabel.shadowColor = [UIColor colorWithWhite:0 alpha:0.3];
+    _nameLabel.shadowOffset = CGSizeMake(0, 1);
     [_containerView addSubview:_nameLabel];
     
     [_nameLabel mas_makeConstraints:^(MASConstraintMaker *make) {
@@ -81,7 +88,7 @@
     _nameLabel.text = model.name;
     
     // 有封面用封面，否则用纯色背景
-    if (model.previewCoverUrl.length > 0) {
+    if ([model.previewCoverUrl isKindOfClass:[NSString class]] && model.previewCoverUrl.length > 0) {
         NSString *url = [model.previewCoverUrl stringByReplacingOccurrencesOfString:@"http://" withString:@"https://"];
         [_coverImageView sd_setImageWithURL:[NSURL URLWithString:url]];
         _coverImageView.hidden = NO;
@@ -98,7 +105,7 @@
 #pragma mark - Utils
 
 - (UIColor *)colorFromHexString:(NSString *)hexString {
-    if (hexString.length < 7) return UIColor.grayColor;
+    if (![hexString isKindOfClass:[NSString class]] || hexString.length < 7) return UIColor.grayColor;
     
     unsigned rgbValue = 0;
     NSScanner *scanner = [NSScanner scannerWithString:hexString];

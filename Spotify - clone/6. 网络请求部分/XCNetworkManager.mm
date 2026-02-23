@@ -291,6 +291,87 @@ static XCNetworkManager *instance = nil;
   NSLog(@"网络请求完成");
 }
 
+#pragma mark - 网易云搜索 API
+
+- (void)searchFromWY:(NSString *)keywords
+                type:(NSInteger)type
+              offset:(NSInteger)offset
+               limit:(NSInteger)limit
+      withCompletion:(void(^)(BOOL success, id _Nullable result))completion {
+    NSString *baseUrl = @"https://1390963969-2g6ivueiij.ap-guangzhou.tencentscf.com";
+    NSString *requestUrl = [NSString stringWithFormat:@"%@/cloudsearch", baseUrl];
+    NSDictionary *params = @{
+        @"keywords": keywords,
+        @"type": @(type),
+        @"offset": @(offset),
+        @"limit": @(limit)
+    };
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@"application/json", @"text/json", @"text/javascript", @"text/html", @"text/plain", nil];
+    [manager GET:requestUrl parameters:params headers:nil progress:nil
+         success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        if (![responseObject isKindOfClass:[NSDictionary class]]) {
+            if (completion) completion(NO, nil);
+            return;
+        }
+        id result = responseObject[@"result"];
+        if (completion) completion(result != nil, result);
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        if (completion) completion(NO, nil);
+    }];
+}
+
+- (void)searchSuggestFromWY:(NSString *)keywords
+             withCompletion:(void(^)(BOOL success, NSArray<NSString *> * _Nullable suggestions))completion {
+    NSString *baseUrl = @"https://1390963969-2g6ivueiij.ap-guangzhou.tencentscf.com";
+    NSString *requestUrl = [NSString stringWithFormat:@"%@/search/suggest", baseUrl];
+    NSDictionary *params = @{@"keywords": keywords, @"type": @"mobile"};
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@"application/json", @"text/json", @"text/javascript", @"text/html", @"text/plain", nil];
+    [manager GET:requestUrl parameters:params headers:nil progress:nil
+         success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        if (![responseObject isKindOfClass:[NSDictionary class]]) {
+            if (completion) completion(NO, nil);
+            return;
+        }
+        NSDictionary *result = responseObject[@"result"];
+        NSMutableArray<NSString *> *suggestions = [NSMutableArray array];
+        NSArray *allMatch = result[@"allMatch"];
+        if (allMatch) {
+            for (NSDictionary *item in allMatch) {
+                NSString *keyword = item[@"keyword"];
+                if (keyword) [suggestions addObject:keyword];
+            }
+        }
+        if (completion) completion(YES, [suggestions copy]);
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        if (completion) completion(NO, nil);
+    }];
+}
+
+- (void)searchHotDetailFromWYWithCompletion:(void(^)(BOOL success, NSArray<NSString *> * _Nullable hotWords))completion {
+    NSString *baseUrl = @"https://1390963969-2g6ivueiij.ap-guangzhou.tencentscf.com";
+    NSString *requestUrl = [NSString stringWithFormat:@"%@/search/hot/detail", baseUrl];
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@"application/json", @"text/json", @"text/javascript", @"text/html", @"text/plain", nil];
+    [manager GET:requestUrl parameters:nil headers:nil progress:nil
+         success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        if (![responseObject isKindOfClass:[NSDictionary class]]) {
+            if (completion) completion(NO, nil);
+            return;
+        }
+        NSArray *data = responseObject[@"data"];
+        NSMutableArray<NSString *> *hotWords = [NSMutableArray array];
+        for (NSDictionary *item in data) {
+            NSString *word = item[@"searchWord"];
+            if (word) [hotWords addObject:word];
+        }
+        if (completion) completion(YES, [hotWords copy]);
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        if (completion) completion(NO, nil);
+    }];
+}
+
 #pragma mark - Token 属性实现
 
 - (NSString *)accountAccessToken {

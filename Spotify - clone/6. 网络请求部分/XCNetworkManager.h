@@ -54,6 +54,20 @@ extern NSString * const kAPITestUserPassword;
 // 网易云 API - 获取歌曲播放 URL
 - (void)findUrlOfSongWithId:(NSString *)songId completion:(void(^)(NSURL * _Nullable songUrl))completion;
 
+// 网易云 API - 综合搜索（type: 1=单曲 10=专辑 100=艺人）
+- (void)searchFromWY:(NSString *)keywords
+                type:(NSInteger)type
+              offset:(NSInteger)offset
+               limit:(NSInteger)limit
+      withCompletion:(void(^)(BOOL success, id _Nullable result))completion;
+
+// 网易云 API - 搜索建议（打字时实时调用）
+- (void)searchSuggestFromWY:(NSString *)keywords
+             withCompletion:(void(^)(BOOL success, NSArray<NSString *> * _Nullable suggestions))completion;
+
+// 网易云 API - 热搜榜（返回关键词字符串数组）
+- (void)searchHotDetailFromWYWithCompletion:(void(^)(BOOL success, NSArray<NSString *> * _Nullable hotWords))completion;
+
 #pragma mark - API 账号认证模块 (Account Auth)
 
 #pragma mark - Token 属性

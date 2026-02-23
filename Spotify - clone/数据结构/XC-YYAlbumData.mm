@@ -37,7 +37,8 @@ WCDB_PRIMARY(albumId)
 }
 
 - (BOOL)modelCustomTransformFromDictionary:(NSDictionary *)dic {
-    if ([self.coverImgUrl hasPrefix:@"http://"]) {
+    if ([self.coverImgUrl isKindOfClass:[NSString class]] &&
+        [self.coverImgUrl hasPrefix:@"http://"]) {
         _coverImgUrl = [self.coverImgUrl stringByReplacingOccurrencesOfString:@"http://"
                                                          withString:@"https://"];
     }

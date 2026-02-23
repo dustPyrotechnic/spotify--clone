@@ -249,7 +249,7 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     } else {
         cell.mainImageView.image = nil;
         cell.mainImageView.backgroundColor = [UIColor systemGray5Color];
-        if (playlist.coverImgUrl.length > 0) {
+        if ([playlist.coverImgUrl isKindOfClass:[NSString class]] && playlist.coverImgUrl.length > 0) {
             NSURL *url = [NSURL URLWithString:playlist.coverImgUrl];
             [cell.mainImageView sd_setImageWithURL:url];
         }
@@ -332,7 +332,7 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     } else {
         cell.coverImageView.image = nil;
         cell.coverImageView.backgroundColor = [UIColor systemGray5Color];
-        if (playlist.coverImgUrl.length > 0) {
+        if ([playlist.coverImgUrl isKindOfClass:[NSString class]] && playlist.coverImgUrl.length > 0) {
             NSURL *url = [NSURL URLWithString:playlist.coverImgUrl];
             [cell.coverImageView sd_setImageWithURL:url];
         }
