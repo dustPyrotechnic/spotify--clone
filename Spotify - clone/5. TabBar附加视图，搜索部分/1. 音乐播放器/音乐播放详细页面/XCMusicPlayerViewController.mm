@@ -40,6 +40,12 @@
     [self.mainView.playOrStopButton addTarget:self action:@selector(handleTouchDownButton) forControlEvents:UIControlEventTouchDown];
     [self.mainView.playOrStopButton addTarget:self action:@selector(pressPlayOrStopButton) forControlEvents:UIControlEventTouchUpInside];
 
+
+    // 设置下一首歌播放按钮
+    [self.mainView.nexSongButton addTarget:self action:@selector(pressNextSong) forControlEvents:UIControlEventTouchUpInside];
+    // 设置上一首歌播放按钮
+    [self.mainView.preSongButton addTarget:self action:@selector(pressPreviousSong) forControlEvents:UIControlEventTouchUpInside];
+
     // 设置随机/顺序模式按钮响应
     [self.mainView.shuffleModeButton addTarget:self action:@selector(pressShuffle) forControlEvents:UIControlEventTouchUpInside];
     
@@ -174,6 +180,13 @@
         [self.musicPlayerModel playMusic];
         [self startProgressTimer];
     }
+}
+- (void)pressNextSong {
+    [self.musicPlayerModel playNextSong];
+}
+
+- (void)pressPreviousSong {
+    [self.musicPlayerModel playPreviousSong];
 }
 
 #pragma mark - 进度条拖动功能（Phase A）

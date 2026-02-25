@@ -9,7 +9,6 @@
 
 #import "XCNetworkManager.h"
 #import "XCResourceLoaderManager.h"
-// Phase 8: 新缓存系统（已集成）
 #import "XCAudioCacheManager.h"
 #import "XCPreloadManager.h"
 
@@ -732,6 +731,16 @@ static XCMusicPlayerModel *instance = nil;
             }
         }];
         
+        return MPRemoteCommandHandlerStatusSuccess;
+    }];
+    [commandCenter.nextTrackCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
+        NSLog(@"[PlayerModel] 远程命令: 下一首");
+        [self playNextSong];
+        return MPRemoteCommandHandlerStatusSuccess;
+    }];
+    [commandCenter.previousTrackCommand addTargetWithHandler:^MPRemoteCommandHandlerStatus(MPRemoteCommandEvent * _Nonnull event) {
+        NSLog(@"[PlayerModel] 远程命令: 上一首");
+        [self playPreviousSong];
         return MPRemoteCommandHandlerStatusSuccess;
     }];
     NSLog(@"[PlayerModel] 远程控制命令设置完成");
