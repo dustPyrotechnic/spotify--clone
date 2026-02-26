@@ -4,9 +4,6 @@
 //
 //  Created by 红尘一笑 on 2026/2/22.
 //
-//  三表规范化设计的 WCDB 数据库管理器
-//  表结构：playlists (XC_YYAlbumData) + songs (XC_YYSongData) + playlist_song_relations (XCPlaylistSongRelation)
-//  单例模式：饿汉式，+load 时自动初始化数据库
 
 #import <Foundation/Foundation.h>
 #import "XC-YYAlbumData.h"
@@ -16,29 +13,43 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// 播放列表排序类型
+/**
+ * 播放列表排序方式
+ *
+ * 传给 ``getAllPlaylistsSortedBy:`` 来决定「喜爱的歌曲」以外列表的排列顺序。
+ */
+// 枚举型类型，排序顺序表
 typedef NS_ENUM(NSInteger, XCPlaylistSortType) {
-    XCPlaylistSortByUpdateTime = 0,   // 最近更新（默认）
-    XCPlaylistSortByCreateTime = 1,   // 最近创建
-    XCPlaylistSortByName       = 2,   // 名称 A-Z
+  XCPlaylistSortByUpdateTime = 0,   // 最近更新（默认）
+  XCPlaylistSortByCreateTime = 1,   // 最近创建
+  XCPlaylistSortByName       = 2,   // 名称 A-Z
 };
 
+/**
+ * 本地播放列表数据库管理器（单例）
+ * 三表规范化设计：
+ * - `playlists` 表：存播放列表元数据（``XC_YYAlbumData``）
+ * - `songs` 表：歌曲信息，每首歌只存一次（``XC_YYSongData``）
+ * - `playlist_song_relations` 表：多对多关联，记录哪首歌在哪个列表、何时加入（``XCPlaylistSongRelation``）
+ * 单例模式实现，方便随时更改
+ * 之后可以考虑建立userInfo单例来统一管理
+ */
 @interface XCPlaylistDatabaseManager : NSObject
 
 + (instancetype)sharedInstance;
 
 #pragma mark - 数据库初始化
-/// 建三张表 + 确保内置「喜爱的歌曲」存在
+/// 建三张表 + 确保内置喜爱的永远存在存在
 - (void)initializeDatabaseIfNeeded;
 
 #pragma mark - 播放列表 CRUD
 /// 获取所有播放列表（喜爱的歌曲固定排首位，其余按 sortType 排序）
 - (NSArray<XC_YYAlbumData *> *)getAllPlaylistsSortedBy:(XCPlaylistSortType)sortType;
 
-/// 新建播放列表（自动生成 UUID 作为 albumId）
+/// 新建播放列表（自动生成 UUID 作为 albumId），我靠为什么oc没有swift的id协议
 - (nullable XC_YYAlbumData *)createPlaylistWithName:(NSString *)name;
 
-/// 删除播放列表及其关联记录（isFavorites=YES 时返回 NO，songs 表不受影响）
+/// 删除播放列表及其关联记录，注意删除的如果是喜欢的列表，会返回为no
 - (BOOL)deletePlaylistWithId:(NSString *)playlistId;
 
 /// 修改播放列表名称
