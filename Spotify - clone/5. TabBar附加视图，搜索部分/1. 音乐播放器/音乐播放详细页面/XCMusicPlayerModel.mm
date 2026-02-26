@@ -723,7 +723,7 @@ static XCMusicPlayerModel *instance = nil;
         __weak typeof(self) weakSelf = self;
         [self.player seekToTime:targetCMTime completionHandler:^(BOOL finished) {
             if (finished) {
-                NSLog(@"[PlayerModel] ✅ 锁屏跳转完成");
+                NSLog(@"[PlayerModel] 锁屏跳转完成");
                 // 如果之前在播放，恢复播放
                 if (wasPlaying) {
                     [weakSelf playMusic];
