@@ -68,19 +68,31 @@
 
   if (indexPath.row == 0) {
     XCAlbumHeadCell* cell = [tableView dequeueReusableCellWithIdentifier:@"XCAlbumHeadCell"];
-    NSURL* url = [NSURL URLWithString:self.model.mainImaUrl];
-    [cell.albumImageView sd_setImageWithURL:url
-                          placeholderImage:nil
-                                   options:SDWebImageRetryFailed | SDWebImageLowPriority
-                                 completed:^(UIImage * _Nullable image, NSError * _Nullable error, SDImageCacheType cacheType, NSURL * _Nullable imageURL) {
-      if (image) {
-        cell.albumImageView.image = image;
-      }
-    }];
+    
+    // 封面始终使用第一首歌的封面
+    NSString *coverUrl = nil;
+    if (self.model.playerList.count > 0) {
+        coverUrl = self.model.playerList.firstObject.mainIma;
+    }
+    
+    // 重置封面状态：先清除旧图片，避免复用时显示旧封面
+    [cell.albumImageView sd_cancelCurrentImageLoad];
+    cell.albumImageView.image = nil;
+    cell.albumImageView.backgroundColor = [UIColor systemGray5Color];
+    
+    if (coverUrl && coverUrl.length > 0) {
+        NSURL* url = [NSURL URLWithString:coverUrl];
+        [cell.albumImageView sd_setImageWithURL:url
+                              placeholderImage:nil
+                                       options:SDWebImageRetryFailed | SDWebImageLowPriority
+                                     completed:^(UIImage * _Nullable image, NSError * _Nullable error, SDImageCacheType cacheType, NSURL * _Nullable imageURL) {
+          // 回调中无需额外处理，SDWebImage 已设置图片
+        }];
+    }
+    
     cell.titleLabel.text = self.model.playerlistName;
-    cell.refreshDateLabel.text = self.model.timeStr;
-    // 测试
-    cell.refreshDateLabel.text = @"一周前";
+    // 更新歌曲数量显示
+    cell.refreshDateLabel.text = [NSString stringWithFormat:@"%lu 首歌曲", (unsigned long)self.model.playerList.count];
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
 
     __weak typeof(self) weakSelf = self;
@@ -197,6 +209,52 @@
   // 传入播放列表
   [XCMusicPlayerModel sharedInstance].playerlist = self.model.playerList;
 
+}
+
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView 
+trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    // 第 0 行是表头，不支持侧滑删除
+    if (indexPath.row == 0) {
+        return nil;
+    }
+    
+    // 如果没有 playlistId（例如在线歌单），不支持删除
+    if (self.model.playlistId.length == 0) {
+        return nil;
+    }
+    
+    XC_YYSongData *song = self.model.playerList[indexPath.row - 1];
+    
+    UIContextualAction *deleteAction = [UIContextualAction 
+        contextualActionWithStyle:UIContextualActionStyleDestructive 
+        title:@"删除" 
+        handler:^(UIContextualAction *action, UIView *sourceView, 
+                 void (^completionHandler)(BOOL)) {
+            
+            // 从数据库删除歌曲与播放列表的关联
+            BOOL success = [[XCPlaylistDatabaseManager sharedInstance] 
+                           removeSong:song.songId fromPlaylist:self.model.playlistId];
+            
+            if (success) {
+                // 从数组中移除
+                [self.model.playerList removeObjectAtIndex:indexPath.row - 1];
+                // 使用 batchUpdates 同时处理删除和表头刷新
+                [tableView performBatchUpdates:^{
+                    // 删除歌曲行
+                    [tableView deleteRowsAtIndexPaths:@[indexPath] 
+                                     withRowAnimation:UITableViewRowAnimationAutomatic];
+                    // 刷新表头（更新封面和歌曲数量）
+                    NSIndexPath *headerIndexPath = [NSIndexPath indexPathForRow:0 inSection:0];
+                    [tableView reloadRowsAtIndexPaths:@[headerIndexPath] 
+                                     withRowAnimation:UITableViewRowAnimationNone];
+                } completion:nil];
+            }
+            
+            completionHandler(success);
+        }];
+    
+    return [UISwipeActionsConfiguration configurationWithActions:@[deleteAction]];
 }
 
 - (void) testCell:(XCAlbumDetailCell*) cell {

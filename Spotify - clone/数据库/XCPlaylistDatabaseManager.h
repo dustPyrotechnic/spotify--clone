@@ -79,6 +79,9 @@ typedef NS_ENUM(NSInteger, XCPlaylistSortType) {
 /// 清理孤立歌曲（不被任何 relation 引用的 songs 记录），返回清理数量
 - (NSInteger)cleanOrphanSongs;
 
+/// 获取播放列表第一首歌的封面URL
+- (nullable NSString *)getFirstSongCoverOfPlaylist:(NSString *)playlistId;
+
 @end
 
 NS_ASSUME_NONNULL_END

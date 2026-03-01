@@ -25,6 +25,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// 新建播放列表，成功返回新建对象，失败返回 nil
 - (nullable XC_YYAlbumData *)createPlaylistWithName:(NSString *)name;
 
+/// 删除指定播放列表（喜爱的歌曲不可删除）
+/// @return YES 删除成功并已从数组移除，NO 删除失败
+- (BOOL)deletePlaylistAtIndex:(NSInteger)index;
+
 @end
 
 NS_ASSUME_NONNULL_END

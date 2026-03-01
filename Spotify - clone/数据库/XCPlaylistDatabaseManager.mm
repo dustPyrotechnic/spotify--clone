@@ -354,4 +354,24 @@ static XCPlaylistDatabaseManager *instance = nil;
   }
 }
 
+// 获取播放列表第一首歌的封面URL
+- (nullable NSString *)getFirstSongCoverOfPlaylist:(NSString *)playlistId {
+    // 查询该播放列表中 addedTime 最早的一首歌
+    NSArray *relations = [self.database getObjectsOfClass:XCPlaylistSongRelation.class
+                                                fromTable:@"playlist_song_relations"
+                                                    where:XCPlaylistSongRelation.playlistId == playlistId
+                                                   orders:XCPlaylistSongRelation.addedTime.asOrder(WCTOrderedAscending)];
+    
+    if (relations.count == 0) return nil;
+    
+    XCPlaylistSongRelation *firstRelation = relations.firstObject;
+    
+    // 查询歌曲的封面
+    XC_YYSongData *song = [self.database getObjectOfClass:XC_YYSongData.class
+                                                fromTable:@"songs"
+                                                    where:XC_YYSongData.songId == firstRelation.songId];
+    
+    return song.mainIma;
+}
+
 @end

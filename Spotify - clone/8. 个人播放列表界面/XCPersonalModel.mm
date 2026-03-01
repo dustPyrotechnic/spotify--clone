@@ -61,4 +61,27 @@ static XCPersonalModel *instance = nil;
     return playlist;
 }
 
+- (BOOL)deletePlaylistAtIndex:(NSInteger)index {
+    if (index < 0 || index >= self.playlists.count) {
+        return NO;
+    }
+    
+    XC_YYAlbumData *playlist = self.playlists[index];
+    
+    // 喜爱的歌曲不可删除
+    if (playlist.isFavorites) {
+        return NO;
+    }
+    
+    // 从数据库删除
+    BOOL success = [[XCPlaylistDatabaseManager sharedInstance] deletePlaylistWithId:playlist.albumId];
+    
+    if (success) {
+        // 从数组中移除
+        [self.playlists removeObjectAtIndex:index];
+    }
+    
+    return success;
+}
+
 @end

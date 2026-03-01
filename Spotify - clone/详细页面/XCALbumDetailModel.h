@@ -18,6 +18,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSString* timeStr;
 /// 歌单，专辑，名字
 @property (nonatomic, strong) NSString* playerlistName;
+/// 播放列表ID（用于删除歌曲）
+@property (nonatomic, strong) NSString* playlistId;
 /// 显示的歌曲名单
 @property (nonatomic, strong) NSMutableArray<XC_YYSongData*>* playerList;
 @end

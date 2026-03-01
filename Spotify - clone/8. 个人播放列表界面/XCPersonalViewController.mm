@@ -62,9 +62,7 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    [self.model loadPlaylists];
-    [self.mainView.tableView reloadData];
-    [self.mainView.collectionView reloadData];
+    [self reloadWithSort];
 }
 
 #pragma mark - Setup
@@ -232,10 +230,10 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     }];
     // 取消之前的图片下载
     [cell.mainImageView sd_cancelCurrentImageLoad];
+    cell.mainImageView.image = nil;
 
     if (playlist.isFavorites) {
         // 喜爱的歌曲：心形图标 + 紫粉渐变背景
-        cell.mainImageView.image = nil;
         cell.mainImageView.backgroundColor = [UIColor clearColor];
         [self applyGradientToView:cell.mainImageView];
         UIImage *heart = [UIImage systemImageNamed:@"heart.fill"];
@@ -247,10 +245,11 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
         heartView.frame = CGRectInset(cell.mainImageView.bounds, 10, 10);
         heartView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     } else {
-        cell.mainImageView.image = nil;
+        // 封面始终使用第一首歌的封面
         cell.mainImageView.backgroundColor = [UIColor systemGray5Color];
-        if ([playlist.coverImgUrl isKindOfClass:[NSString class]] && playlist.coverImgUrl.length > 0) {
-            NSURL *url = [NSURL URLWithString:playlist.coverImgUrl];
+        NSString *coverUrl = [[XCPlaylistDatabaseManager sharedInstance] getFirstSongCoverOfPlaylist:playlist.albumId];
+        if (coverUrl && coverUrl.length > 0) {
+            NSURL *url = [NSURL URLWithString:coverUrl];
             [cell.mainImageView sd_setImageWithURL:url];
         }
     }
@@ -307,6 +306,40 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     [self pushDetailForPlaylist:self.model.playlists[indexPath.row]];
 }
 
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView 
+trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    XC_YYAlbumData *playlist = self.model.playlists[indexPath.row];
+    
+    // 喜爱的歌曲不可删除，不显示侧滑操作
+    if (playlist.isFavorites) {
+        return nil;
+    }
+    
+    UIContextualAction *deleteAction = [UIContextualAction 
+        contextualActionWithStyle:UIContextualActionStyleDestructive 
+        title:@"删除" 
+        handler:^(UIContextualAction *action, UIView *sourceView, 
+                 void (^completionHandler)(BOOL)) {
+            
+            // 从 Model 删除（数据库 + 数组）
+            BOOL success = [self.model deletePlaylistAtIndex:indexPath.row];
+            
+            if (success) {
+                // 更新当前可见的 TableView（带动画）
+                [tableView deleteRowsAtIndexPaths:@[indexPath] 
+                                 withRowAnimation:UITableViewRowAnimationAutomatic];
+                
+                // 同步刷新后台的 CollectionView，保持数据一致
+                [self.mainView.collectionView reloadData];
+            }
+            
+            completionHandler(success);
+        }];
+    
+    return [UISwipeActionsConfiguration configurationWithActions:@[deleteAction]];
+}
+
 #pragma mark - UICollectionViewDataSource
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
@@ -325,15 +358,17 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     [self clearGradientFromView:cell.coverImageView];
     // 取消之前的图片下载
     [cell.coverImageView sd_cancelCurrentImageLoad];
+    cell.coverImageView.image = nil;
 
     if (playlist.isFavorites) {
-        cell.coverImageView.image = nil;
+        cell.coverImageView.backgroundColor = [UIColor clearColor];
         [self applyGradientToCollectionCell:cell];
     } else {
-        cell.coverImageView.image = nil;
+        // 封面始终使用第一首歌的封面
         cell.coverImageView.backgroundColor = [UIColor systemGray5Color];
-        if ([playlist.coverImgUrl isKindOfClass:[NSString class]] && playlist.coverImgUrl.length > 0) {
-            NSURL *url = [NSURL URLWithString:playlist.coverImgUrl];
+        NSString *coverUrl = [[XCPlaylistDatabaseManager sharedInstance] getFirstSongCoverOfPlaylist:playlist.albumId];
+        if (coverUrl && coverUrl.length > 0) {
+            NSURL *url = [NSURL URLWithString:coverUrl];
             [cell.coverImageView sd_setImageWithURL:url];
         }
     }
@@ -379,6 +414,7 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
     detailVC.model.playerlistName = playlist.name;
     detailVC.model.mainImaUrl = playlist.coverImgUrl ?: @"";
     detailVC.model.timeStr = @"最近更新";
+    detailVC.model.playlistId = playlist.albumId;
     detailVC.model.playerList =
         [[XCPlaylistDatabaseManager sharedInstance] getSongsOfPlaylist:playlist.albumId];
     [self.navigationController pushViewController:detailVC animated:YES];
