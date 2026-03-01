@@ -19,7 +19,7 @@
 
 @implementation XCPlaylistDatabaseManager
 
-#pragma mark - 饿汉式单例
+#pragma mark - 单例模式
 
 static XCPlaylistDatabaseManager *instance = nil;
 
@@ -89,7 +89,7 @@ static XCPlaylistDatabaseManager *instance = nil;
   }
 }
 
-#pragma mark - 播放列表
+#pragma mark - 增删改查播放列表
 
 /**
  * 获取全量播放列表
@@ -193,7 +193,7 @@ static XCPlaylistDatabaseManager *instance = nil;
                        where:XC_YYAlbumData.albumId == playlistId];
 }
 
-#pragma mark - 歌曲
+#pragma mark - 歌曲相关方法
 
 /**
  * 获取播放列表内的所有歌曲
