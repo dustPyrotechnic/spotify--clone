@@ -23,9 +23,19 @@
 @property (nonatomic, assign) long long totalContentLength;  // 文件总长度
 @property (nonatomic, copy) NSString *contentType;  // 从 HTTP 响应获取的真实 Content-Type
 @property (nonatomic, assign) BOOL isContentInfoRequest;  // 是否为 AVPlayer 的 Content Info 探测请求（bytes=0-1）
+@property (nonatomic, assign) NSTimeInterval createTime;  // 任务创建时间，用于超时清理
 @end
 
 @implementation XCResourceLoadingTask
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _createTime = [[NSDate date] timeIntervalSince1970];
+    }
+    return self;
+}
+
 @end
 
 #pragma mark - XCResourceLoaderManager
@@ -36,6 +46,7 @@
 @property (nonatomic, strong) dispatch_queue_t taskQueue;
 @property (nonatomic, strong) dispatch_queue_t delegateQueue;  // 与 setDelegate:queue: 一致，用于 respondWithData/finishLoading
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *songTotalLengthCache;  // songId -> totalLength，避免 L1 返回部分数据时 contentLength 错误导致音频截断
+@property (nonatomic, strong) NSTimer *cleanupTimer;  // 定时清理任务计时器
 @end
 
 @implementation XCResourceLoaderManager
@@ -75,9 +86,69 @@ static XCResourceLoaderManager *instance = nil;
         NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
         _urlSession = [NSURLSession sessionWithConfiguration:config];
         
+        // 启动定时清理任务（每 60 秒清理一次超时任务）
+        [self startCleanupTimer];
+        
         NSLog(@"[ResourceLoader] 初始化完成");
     }
     return self;
+}
+
+#pragma mark - 定时清理
+
+/// 启动定时清理任务（每 60 秒检查一次超时任务）
+- (void)startCleanupTimer {
+    __weak typeof(self) weakSelf = self;
+    self.cleanupTimer = [NSTimer scheduledTimerWithTimeInterval:60.0
+                                                        repeats:YES
+                                                          block:^(NSTimer * _Nonnull timer) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+            [timer invalidate];
+            return;
+        }
+        [strongSelf cleanupStaleTasks];
+    }];
+    NSLog(@"[ResourceLoader] 启动任务清理定时器（60秒间隔）");
+}
+
+/// 清理超时任务（超过 5 分钟未完成的视为超时）
+- (void)cleanupStaleTasks {
+    NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+    NSTimeInterval timeout = 300;  // 5 分钟超时
+    
+    dispatch_async(self.taskQueue, ^{
+        NSMutableArray *keysToRemove = [NSMutableArray array];
+        
+        for (NSString *key in self.loadingTasks) {
+            XCResourceLoadingTask *task = self.loadingTasks[key];
+            NSTimeInterval age = now - task.createTime;
+            
+            if (age > timeout) {
+                NSLog(@"[ResourceLoader] 🧹 清理超时任务: %@, 已存在 %.1f 秒", task.songId, age);
+                
+                // 取消网络请求
+                if (task.dataTask && task.dataTask.state == NSURLSessionTaskStateRunning) {
+                    [task.dataTask cancel];
+                }
+                
+                // 结束加载请求（返回错误）
+                NSError *timeoutError = [NSError errorWithDomain:@"XCResourceLoader"
+                                                            code:-4
+                                                        userInfo:@{NSLocalizedDescriptionKey: @"请求超时"}];
+                dispatch_async(self.delegateQueue, ^{
+                    [task.loadingRequest finishLoadingWithError:timeoutError];
+                });
+                
+                [keysToRemove addObject:key];
+            }
+        }
+        
+        if (keysToRemove.count > 0) {
+            [self.loadingTasks removeObjectsForKeys:keysToRemove];
+            NSLog(@"[ResourceLoader] 🧹 本次清理 %lu 个超时任务", (unsigned long)keysToRemove.count);
+        }
+    });
 }
 
 #pragma mark - URL 转换

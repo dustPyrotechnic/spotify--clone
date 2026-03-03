@@ -132,12 +132,13 @@
 
 - (void)giveData: (XC_YYSongData*) song ToCell: (XCAlbumDetailCell*) cell {
   NSURL* url = [NSURL URLWithString:song.mainIma];
+  __weak typeof(cell) weakCell = cell;
   [cell.mainImageView sd_setImageWithURL:url
                         placeholderImage:nil
                                  options:SDWebImageRetryFailed | SDWebImageLowPriority
                                completed:^(UIImage * _Nullable image, NSError * _Nullable error, SDImageCacheType cacheType, NSURL * _Nullable imageURL) {
-    if (image) {
-      cell.mainImageView.image = image;
+    if (image && weakCell) {
+      weakCell.mainImageView.image = image;
     }
   }];
   cell.songId = song.songId;

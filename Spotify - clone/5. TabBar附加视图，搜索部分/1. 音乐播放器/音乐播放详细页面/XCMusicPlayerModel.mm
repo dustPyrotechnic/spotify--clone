@@ -30,6 +30,8 @@ NSString * const XCMusicPlayerPlayModeDidChangeNotification = @"XCMusicPlayerPla
 @interface XCMusicPlayerModel ()
 /// 锁屏进度更新定时器
 @property (nonatomic, strong) NSTimer *lockScreenTimer;
+/// 预加载进度观察者 token（用于移除观察者）
+@property (nonatomic, strong) id preloadProgressObserverToken;
 @end
 
 @implementation XCMusicPlayerModel
@@ -364,7 +366,7 @@ static XCMusicPlayerModel *instance = nil;
     if (cachedURL) {
         XCAudioFileCacheState cacheState = [cacheManager cacheStateForSongId:songId];
         NSString *cacheLevel = (cacheState == XCAudioFileCacheStateComplete) ? @"L3" : @"L2";
-        NSLog(@"[PlayerModel] ✅ 命中 %@ 缓存，使用本地播放: %@", cacheLevel, cachedURL.path.lastPathComponent);
+        NSLog(@"[PlayerModel] 命中 %@ 缓存，使用本地播放: %@", cacheLevel, cachedURL.path.lastPathComponent);
         
         [self playWithURL:cachedURL songId:songId];
         [cacheManager setCurrentPrioritySong:songId];
@@ -374,22 +376,26 @@ static XCMusicPlayerModel *instance = nil;
     NSLog(@"[PlayerModel] 未命中缓存，将使用网络播放");
 
     XCNetworkManager *networkManager = [XCNetworkManager sharedInstance];
+    __weak typeof(self) weakSelf = self;
     [networkManager findUrlOfSongWithId:songId completion:^(NSURL * _Nullable songUrl) {
         dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            
             if (songUrl) {
                 NSLog(@"[PlayerModel] 获取到歌曲 URL: %@", songUrl);
                 
                 // Phase 8: 记录原始 URL，用于确定正确的文件扩展名
                 [cacheManager recordOriginalURL:songUrl forSongId:songId];
                 
-                [self playWithURL:songUrl songId:songId];
+                [strongSelf playWithURL:songUrl songId:songId];
                 
                 // Phase 8: 设置当前优先歌曲（防止 L1 被清理）
                 [cacheManager setCurrentPrioritySong:songId];
 
                 // 旧缓存系统调用（已注释，保留代码供参考）
                 /*
-                XC_YYSongData *song = [self findSongInPlaylistById:songId];
+                XC_YYSongData *song = [strongSelf findSongInPlaylistById:songId];
                 if (song) {
                     song.songUrl = songUrl.absoluteString;
                     NSLog(@"[PlayerModel] 触发后台缓存下载, URL: %@", song.songUrl);
@@ -411,6 +417,13 @@ static XCMusicPlayerModel *instance = nil;
 - (void)playWithURL:(NSURL *)url songId:(NSString *)songId {
     NSLog(@"[PlayerModel] 创建播放器: %@", songId);
     NSLog(@"[PlayerModel] 原始 URL: %@", url);
+    
+    // 切歌前清理预加载观察者，避免观察者累积
+    if (self.preloadProgressObserverToken) {
+        [self.player removeTimeObserver:self.preloadProgressObserverToken];
+        self.preloadProgressObserverToken = nil;
+        NSLog(@"[PlayerModel] 切歌前清理预加载观察者");
+    }
     
     // 判断是本地文件还是网络 URL
     BOOL isLocalFile = [url.scheme isEqualToString:@"file"];
@@ -482,12 +495,20 @@ static XCMusicPlayerModel *instance = nil;
 
 // Phase 8: 添加播放进度观察，在 50% 时触发预加载
 - (void)addProgressObserverForPreload {
+    // 先移除旧的观察者，避免重复添加
+    if (self.preloadProgressObserverToken) {
+        [self.player removeTimeObserver:self.preloadProgressObserverToken];
+        self.preloadProgressObserverToken = nil;
+        NSLog(@"[PlayerModel] 移除旧的预加载进度观察者");
+    }
+    
     __weak typeof(self) weakSelf = self;
-    [self.player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC)
-                                              queue:dispatch_get_main_queue()
-                                         usingBlock:^(CMTime time) {
+    self.preloadProgressObserverToken = [self.player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC)
+                                                                                  queue:dispatch_get_main_queue()
+                                                                             usingBlock:^(CMTime time) {
         [weakSelf checkPlaybackProgressForPreload];
     }];
+    NSLog(@"[PlayerModel] 添加预加载进度观察者");
 }
 
 // Phase 8: 检查播放进度，50% 时触发预加载
@@ -775,8 +796,15 @@ static XCMusicPlayerModel *instance = nil;
     }
 
     if (artworkImage) {
+        // 使用弱引用避免 requestHandler 长期持有大图
+        __weak UIImage *weakArtworkImage = artworkImage;
         MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:artworkImage.size requestHandler:^UIImage * _Nonnull(CGSize size) {
-            return artworkImage;
+            // 返回时复制一份图片，避免原图被长期引用
+            UIImage *image = weakArtworkImage;
+            if (!image) {
+                return [UIImage imageNamed:@"placeholder_cover"];
+            }
+            return image;
         }];
         [dict setObject:artwork forKey:MPMediaItemPropertyArtwork];
     }
@@ -874,13 +902,19 @@ static XCMusicPlayerModel *instance = nil;
 - (void)startLockScreenProgressTimer {
     // 先停止之前的定时器
     [self stopLockScreenProgressTimer];
-    
     // 创建新的定时器，每秒更新一次锁屏进度
+    // 使用 block 版本避免 NSTimer 对 self 的强引用（单例循环引用问题）
+    __weak typeof(self) weakSelf = self;
     self.lockScreenTimer = [NSTimer scheduledTimerWithTimeInterval:1.0
-                                                            target:self
-                                                          selector:@selector(updateLockScreenProgress)
-                                                          userInfo:nil
-                                                           repeats:YES];
+                                                           repeats:YES
+                                                             block:^(NSTimer * _Nonnull timer) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+            [timer invalidate];
+            return;
+        }
+        [strongSelf updateLockScreenProgress];
+    }];
     NSLog(@"[PlayerModel] 启动锁屏进度定时器");
 }
 

@@ -64,6 +64,8 @@
   // 重置内容，避免复用导致的闪动
   self.imageView.image = nil;
   self.titleLable.text = @"";
+  // 取消进行中的图片加载，避免 Cell 被 block 强引用无法释放
+  [self.imageView sd_cancelCurrentImageLoad];
 }
 - (void) getDataAndLayout {
   // 为当前加载生成唯一标识
@@ -72,12 +74,13 @@
   self.imageView.image = nil;
   
   NSURL* url = [NSURL URLWithString:self.data.coverImgUrl];
+  __weak typeof(self) weakSelf = self;
   [self.imageView sd_setImageWithURL:url
                     placeholderImage:nil
                              options:SDWebImageRetryFailed | SDWebImageLowPriority
                            completed:^(UIImage * _Nullable image, NSError * _Nullable error, SDImageCacheType cacheType, NSURL * _Nullable imageURL) {
     if (image) {
-      self.imageView.image = image;
+      weakSelf.imageView.image = image;
     }
   }];
 }

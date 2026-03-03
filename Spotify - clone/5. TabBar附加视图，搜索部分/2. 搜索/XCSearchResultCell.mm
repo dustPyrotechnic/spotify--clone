@@ -34,6 +34,15 @@
     return self;
 }
 
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    // 取消进行中的图片加载，避免 Cell 复用时显示旧图片
+    [self.coverImageView sd_cancelCurrentImageLoad];
+    self.coverImageView.image = nil;
+    self.titleLabel.text = nil;
+    self.subtitleLabel.text = nil;
+}
+
 #pragma mark - Setup
 
 - (void)setupViews {

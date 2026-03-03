@@ -145,10 +145,13 @@ static XCNetworkManager *instance = nil;
         NSInteger statusCode = httpResponse.statusCode;
         // 401 表示 Token 过期，刷新后重试
         if (statusCode == 401) {
+            __weak typeof(self) weakSelf = self;
             [self getTokenWithCompletion:^(BOOL success) {
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) return;
                 if (success) {
                     dataTimes = 0;
-                    [self getDataOfAllAlbums:array];
+                    [strongSelf getDataOfAllAlbums:array];
                 }
             }];
             return;
@@ -156,8 +159,11 @@ static XCNetworkManager *instance = nil;
         // 其他错误使用延时递归重试
         if (dataTimes < 10) {
             dataTimes += 1;
+            __weak typeof(self) weakSelf = self;
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [self getDataOfAllAlbums:array];
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) return;
+                [strongSelf getDataOfAllAlbums:array];
             });
         } else {
             dataTimes = 0;
