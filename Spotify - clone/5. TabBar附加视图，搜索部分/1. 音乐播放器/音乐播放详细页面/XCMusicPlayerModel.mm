@@ -600,8 +600,50 @@ static XCMusicPlayerModel *instance = nil;
     XC_YYSongData *nextSong = self.playerlist[nextIndex];
     NSLog(@"[PlayerModel] 播放进度 50%%，触发预加载下一首: %@", nextSong.name);
     
+    // 预加载音频
     [[XCPreloadManager sharedInstance] preloadSong:nextSong.songId 
                                           priority:XCAudioPreloadPriorityHigh];
+    
+    // 预加载封面图片
+    [self preloadAlbumCoverImage:nextSong.mainIma];
+}
+
+#pragma mark - 封面图片预加载
+
+/// 预加载专辑封面图片到缓存
+- (void)preloadAlbumCoverImage:(NSString *)imageUrlString {
+    if (!imageUrlString || imageUrlString.length == 0) {
+        return;
+    }
+    
+    NSURL *imageURL = [NSURL URLWithString:imageUrlString];
+    if (!imageURL) {
+        return;
+    }
+    
+    // 检查是否已缓存
+    NSString *key = [[SDWebImageManager sharedManager] cacheKeyForURL:imageURL];
+    UIImage *cachedImage = [[SDImageCache sharedImageCache] imageFromCacheForKey:key];
+    
+    if (cachedImage) {
+        NSLog(@"[PlayerModel] 封面图片已缓存，跳过预加载: %@", imageUrlString);
+        return;
+    }
+    
+    NSLog(@"[PlayerModel] 开始预加载封面图片: %@", imageUrlString);
+    
+    // 使用 SDWebImageManager 预加载图片到缓存
+    [[SDWebImageManager sharedManager] loadImageWithURL:imageURL
+                                                  options:SDWebImageRetryFailed | SDWebImageLowPriority
+                                                  context:nil
+                                                 progress:nil
+                                                completed:^(UIImage * _Nullable image, NSData * _Nullable data, NSError * _Nullable error, SDImageCacheType cacheType, BOOL finished, NSURL * _Nullable imageURL) {
+        if (image) {
+            NSLog(@"[PlayerModel] 封面图片预加载成功: %@", imageUrlString);
+        } else if (error) {
+            NSLog(@"[PlayerModel] 封面图片预加载失败: %@, 错误: %@", imageUrlString, error.localizedDescription);
+        }
+    }];
 }
 
 // 在播放列表中查找歌曲
@@ -822,32 +864,65 @@ static XCMusicPlayerModel *instance = nil;
 
     // 尝试先找占位图
     UIImage *artworkImage = [UIImage imageNamed:@"placeholder_cover"];
+    BOOL foundInCache = NO;
 
     if (url) {
+        // 【修复】尝试多种方式查找缓存图片
+        // 方式1: 查找原始URL的缓存（不带transformer）
         NSString *key = [[SDWebImageManager sharedManager] cacheKeyForURL:url];
-        // 【关键修改】同时查找内存和磁盘 (Disk)
-        UIImage *cachedImage = [[SDImageCache sharedImageCache] imageFromDiskCacheForKey:key];
+        UIImage *cachedImage = [[SDImageCache sharedImageCache] imageFromCacheForKey:key];
+        
+        // 方式2: 尝试查找带transformer的缓存（与XCALbumDetailViewController保持一致）
+        if (!cachedImage) {
+            id<SDImageTransformer> transformer = [SDImageResizingTransformer transformerWithSize:CGSizeMake(400, 400)
+                                                                                       scaleMode:SDImageScaleModeAspectFill];
+            NSString *transformedKey = SDTransformedKeyForKey(key, transformer.transformerKey);
+            cachedImage = [[SDImageCache sharedImageCache] imageFromCacheForKey:transformedKey];
+            if (cachedImage) {
+                NSLog(@"[PlayerModel] 使用带transformer的缓存专辑封面");
+            }
+        }
+        
+        // 方式3: 尝试内存缓存
+        if (!cachedImage) {
+            cachedImage = [[SDImageCache sharedImageCache] imageFromMemoryCacheForKey:key];
+        }
 
         if (cachedImage) {
             artworkImage = cachedImage;
+            foundInCache = YES;
             NSLog(@"[PlayerModel] 使用缓存的专辑封面");
         } else {
-            NSLog(@"[PlayerModel] 未找到专辑封面缓存");
+            NSLog(@"[PlayerModel] 未找到专辑封面缓存，将异步下载");
         }
     }
 
     if (artworkImage) {
-        // 使用弱引用避免 requestHandler 长期持有大图
-        __weak UIImage *weakArtworkImage = artworkImage;
+        // 【修复】使用强引用持有图片，避免被提前释放
         MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:artworkImage.size requestHandler:^UIImage * _Nonnull(CGSize size) {
-            // 返回时复制一份图片，避免原图被长期引用
-            UIImage *image = weakArtworkImage;
-            if (!image) {
-                return [UIImage imageNamed:@"placeholder_cover"];
-            }
-            return image;
+            return artworkImage;
         }];
         [dict setObject:artwork forKey:MPMediaItemPropertyArtwork];
+    }
+    
+    // 【修复】如果没有在缓存中找到图片，异步下载并更新锁屏信息
+    if (url && !foundInCache) {
+        __weak typeof(self) weakSelf = self;
+        [[SDWebImageManager sharedManager] loadImageWithURL:url
+                                                      options:SDWebImageRetryFailed | SDWebImageLowPriority
+                                                      context:nil
+                                                     progress:nil
+                                                    completed:^(UIImage * _Nullable image, NSData * _Nullable data, NSError * _Nullable error, SDImageCacheType cacheType, BOOL finished, NSURL * _Nullable imageURL) {
+            if (image) {
+                NSLog(@"[PlayerModel] 异步下载专辑封面完成，更新锁屏信息");
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    __strong typeof(weakSelf) strongSelf = weakSelf;
+                    if (strongSelf) {
+                        [strongSelf updateLockScreenArtworkWithImage:image];
+                    }
+                });
+            }
+        }];
     }
     // 示例：假设 self.player 是 AVPlayer
     // CMTime duration = self.player.currentItem.duration;
@@ -878,6 +953,22 @@ static XCMusicPlayerModel *instance = nil;
 
     [infoCenter setNowPlayingInfo:dict];
     NSLog(@"[PlayerModel] 锁屏信息更新完成: %@", self.nowPlayingSong.name);
+}
+
+/// 只更新锁屏封面图片（异步下载完成后调用）
+- (void)updateLockScreenArtworkWithImage:(UIImage *)image {
+    if (!image) return;
+    
+    MPNowPlayingInfoCenter *infoCenter = [MPNowPlayingInfoCenter defaultCenter];
+    NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithDictionary:infoCenter.nowPlayingInfo];
+    
+    MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:image.size requestHandler:^UIImage * _Nonnull(CGSize size) {
+        return image;
+    }];
+    [dict setObject:artwork forKey:MPMediaItemPropertyArtwork];
+    
+    [infoCenter setNowPlayingInfo:dict];
+    NSLog(@"[PlayerModel] 锁屏封面图片已更新");
 }
 #pragma mark - 缓存相关内容
 - (NSURL *)customURLFromOriginalURL:(NSURL *)originalURL {

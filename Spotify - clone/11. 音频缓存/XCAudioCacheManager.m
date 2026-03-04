@@ -17,6 +17,7 @@
 #import "XCAudioSongCacheInfo.h"
 #import "XCAudioCachePathUtils.h"
 #import "XCAudioSegmentInfo.h"
+#import "XCResourceLoaderManager.h"
 
 @interface XCAudioCacheManager ()
 
@@ -114,9 +115,9 @@
     NSFileManager *fm = [NSFileManager defaultManager];
     XCAudioCachePathUtils *pathUtils = [XCAudioCachePathUtils sharedInstance];
     
-    // 先查 L3（使用正确的扩展名）
-    NSString *l3Path = [pathUtils cacheFilePathForSongId:songId originalURL:originalURL];
-    if ([fm fileExistsAtPath:l3Path]) {
+    // 先查 L3（通过 persistentManager，支持目录扫描，兼容任意扩展名）
+    NSString *l3Path = [self.persistentManager cachedFilePathForSongId:songId];
+    if (l3Path) {
         [self.indexManager updatePlayTimeForSongId:songId];
         return l3Path;
     }
@@ -300,10 +301,22 @@
         }
     }
     
-    // 【L2→L3】验证文件完整性并移动到永久缓存（使用正确的扩展名）
-    NSString *cachePath = [[XCAudioCachePathUtils sharedInstance] cacheFilePathForSongId:songId 
+    // 【完整性校验】比较 L2 文件实际大小与 HTTP Content-Length
+    long long totalLength = [[XCResourceLoaderManager sharedInstance] totalLengthForSongId:songId];
+    if (totalLength > 0) {
+        NSDictionary *attrs = [fm attributesOfItemAtPath:tempPath error:nil];
+        long long fileSize = [attrs[NSFileSize] longLongValue];
+        if (fileSize < totalLength) {
+            NSLog(@"[AudioCacheManager] Song %@ incomplete: fileSize=%lld < totalLength=%lld, keeping in L2",
+                  songId, fileSize, totalLength);
+            return NO;
+        }
+    }
+
+    // 【L2→L3】文件完整（或无法确认大小时跳过校验），移动到永久缓存
+    NSString *cachePath = [[XCAudioCachePathUtils sharedInstance] cacheFilePathForSongId:songId
                                                                                originalURL:originalURL];
-    BOOL success = [self.persistentManager moveTempFileToCache:tempPath 
+    BOOL success = [self.persistentManager moveTempFileToCache:tempPath
                                                     cachePath:cachePath
                                                      forSongId:songId];
     if (success) {
@@ -311,10 +324,10 @@
         [self.memoryManager clearSegmentsForSongId:songId];
         NSLog(@"[AudioCacheManager] Confirmed and moved song %@ to L3", songId);
     } else {
-        // 【保留 L2】文件不完整，保留在临时缓存中
-        NSLog(@"[AudioCacheManager] Song %@ incomplete, keeping in L2", songId);
+        // 【保留 L2】移动失败，保留在临时缓存中
+        NSLog(@"[AudioCacheManager] Song %@ move failed, keeping in L2", songId);
     }
-    
+
     return success;
 }
 
@@ -336,15 +349,14 @@
         return XCAudioFileCacheStateNone;
     }
     
-    // 【步骤 2】L2 → L3：验证完整性后移动到永久缓存
-    if (expectedSize > 0) {
-        BOOL confirmed = [self confirmCompleteSong:songId expectedSize:expectedSize];
-        if (confirmed) {
-            return XCAudioFileCacheStateComplete;
-        }
+    // 【步骤 2】L2 → L3：无论 expectedSize 是否为 0，都尝试晋升
+    // confirmCompleteSong 内部会检查 L2 文件是否存在，不存在则安全返回 NO
+    BOOL confirmed = [self confirmCompleteSong:songId expectedSize:expectedSize];
+    if (confirmed) {
+        return XCAudioFileCacheStateComplete;
     }
-    
-    return XCAudioFileCacheStateTempFile; // 未验证或不完整，保留在 L2
+
+    return XCAudioFileCacheStateTempFile; // 文件不存在或移动失败，保留在 L2
 }
 
 #pragma mark - 预加载支持

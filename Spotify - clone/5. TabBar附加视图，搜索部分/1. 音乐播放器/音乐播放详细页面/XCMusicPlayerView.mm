@@ -18,17 +18,11 @@
   self = [super init];
   if (self) {
     NSLog(@"[MusicPlayerView] 初始化子视图");
-    // 测试
-    self.image = [UIImage imageNamed:@"testImage.jpg"];
-    NSLog(@"[MusicPlayerView] 测试图片: %@", self.image);
-
-
-    // 设置背景色
-//    self.backgroundColor = aveColor;
 
     // 初始化专辑图片
     self.albumImage = [[UIImageView alloc] init];
-    self.albumImage.image = self.image;
+    // 【优化】不设置默认图片，避免切换歌曲时闪烁
+    // 初始状态显示背景色，等有歌曲数据时再加载真实封面
     self.albumImage.contentMode = UIViewContentModeScaleAspectFill;
     self.albumImage.clipsToBounds = YES;
     self.albumImage.layer.cornerRadius = 12;
@@ -206,12 +200,14 @@
         return;
     }
     
-    // 优先使用 albumImage.image，如果没有则使用 self.image
-    UIImage *imageToUse = self.albumImage.image ?: self.image;
+    // 【优化】只使用 albumImage.image 来计算背景色
+    UIImage *imageToUse = self.albumImage.image;
     NSLog(@"[MusicPlayerView] 使用的图片: %@", imageToUse);
     
     if (!imageToUse) {
         NSLog(@"[MusicPlayerView] ⚠️ 没有可用图片，跳过背景设置");
+        // 使用默认背景色
+        self.backgroundColor = [UIColor systemBackgroundColor];
         return;
     }
     
@@ -409,25 +405,55 @@
         self.totalTimeLabel.text = @"0:00";
     }
     
-    // 使用 SDWebImage 加载专辑封面
+    // 使用 SDWebImage 加载专辑封面（优化：避免闪烁）
     if (song.mainIma) {
         NSLog(@"[MusicPlayerView] 开始加载专辑封面: %@", song.mainIma);
         NSURL *imageURL = [NSURL URLWithString:song.mainIma];
         NSLog(@"[MusicPlayerView] 图片 URL: %@", imageURL);
         
+        // 【优化】先尝试从缓存获取图片，避免显示 placeholder 造成闪烁
+        NSString *key = [[SDWebImageManager sharedManager] cacheKeyForURL:imageURL];
+        UIImage *cachedImage = [[SDImageCache sharedImageCache] imageFromCacheForKey:key];
+        
         __weak typeof(self) weakSelf = self;
-        [self.albumImage sd_setImageWithURL:imageURL
-                           placeholderImage:[UIImage imageNamed:@"testImage.jpg"]
-                                  completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
-            NSLog(@"[MusicPlayerView] 图片加载完成回调触发");
-            if (error) {
-                NSLog(@"[MusicPlayerView] ⚠️ 图片加载错误: %@", error.localizedDescription);
-            } else {
-                NSLog(@"[MusicPlayerView] 图片加载成功，标记需要刷新布局");
-            }
-            // 图片加载完成后标记需要重新布局，在 layoutSubviews 中更新背景
-            [weakSelf setNeedsLayout];
-        }];
+        
+        if (cachedImage) {
+            // 缓存中有，直接使用，不需要 placeholder
+            NSLog(@"[MusicPlayerView] 使用缓存的图片，无闪烁");
+            self.albumImage.image = cachedImage;
+            [self setNeedsLayout];
+        } else {
+            // 缓存中没有，使用当前显示的图片作为 placeholder（避免显示默认图）
+            // 如果当前没有图片，则使用 nil（显示空白背景色）
+            UIImage *currentImage = self.albumImage.image;
+            BOOL hasValidCurrentImage = (currentImage != nil && 
+                                        currentImage != [UIImage imageNamed:@"testImage.jpg"]);
+            
+            NSLog(@"[MusicPlayerView] 缓存未命中，使用当前图片作为 placeholder: %@", 
+                  hasValidCurrentImage ? @"是" : @"否");
+            
+            [self.albumImage sd_setImageWithURL:imageURL
+                               placeholderImage:hasValidCurrentImage ? currentImage : nil
+                                        options:SDWebImageRetryFailed | SDWebImageAvoidAutoSetImage
+                                       progress:nil
+                                      completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+                NSLog(@"[MusicPlayerView] 图片加载完成回调触发");
+                if (error) {
+                    NSLog(@"[MusicPlayerView] ⚠️ 图片加载错误: %@", error.localizedDescription);
+                } else if (image) {
+                    NSLog(@"[MusicPlayerView] 图片加载成功，使用淡入动画");
+                    // 使用淡入动画平滑过渡
+                    [UIView transitionWithView:weakSelf.albumImage
+                                      duration:0.3
+                                       options:UIViewAnimationOptionTransitionCrossDissolve
+                                    animations:^{
+                        weakSelf.albumImage.image = image;
+                    } completion:nil];
+                }
+                // 图片加载完成后标记需要重新布局，在 layoutSubviews 中更新背景
+                [weakSelf setNeedsLayout];
+            }];
+        }
     }
     // 不在这里直接调用 updateBackgroundGradient，交给 layoutSubviews 处理
 }

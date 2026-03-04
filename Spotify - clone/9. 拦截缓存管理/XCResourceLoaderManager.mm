@@ -146,7 +146,7 @@ static XCResourceLoaderManager *instance = nil;
         
         if (keysToRemove.count > 0) {
             [self.loadingTasks removeObjectsForKeys:keysToRemove];
-            NSLog(@"[ResourceLoader] 🧹 本次清理 %lu 个超时任务", (unsigned long)keysToRemove.count);
+            NSLog(@"[ResourceLoader]  本次清理 %lu 个超时任务", (unsigned long)keysToRemove.count);
         }
     });
 }
@@ -185,6 +185,15 @@ static XCResourceLoaderManager *instance = nil;
     if (!streamingURL) return nil;
     // streaming://songId?url=xxx
     return streamingURL.host;
+}
+
+- (long long)totalLengthForSongId:(NSString *)songId {
+    if (!songId || songId.length == 0) return 0;
+    __block long long length = 0;
+    dispatch_sync(self.taskQueue, ^{
+        length = [self.songTotalLengthCache[songId] longLongValue];
+    });
+    return length;
 }
 
 #pragma mark - AVAssetResourceLoaderDelegate

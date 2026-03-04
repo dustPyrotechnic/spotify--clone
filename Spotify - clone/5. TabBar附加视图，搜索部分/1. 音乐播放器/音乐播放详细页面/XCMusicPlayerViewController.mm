@@ -89,6 +89,14 @@
     [self stopProgressTimer];
 }
 
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    NSLog(@"[MusicPlayerVC] viewWillAppear");
+    
+    // 同步当前播放进度到 UI
+    [self syncCurrentProgressToUI];
+}
+
 #pragma mark - 通知注册
 
 - (void)registerNotifications {
@@ -356,6 +364,31 @@
     
     // 更新当前时间标签
     [self.mainView updateCurrentTime:currentTime];
+}
+
+/// 同步当前播放进度到 UI（用于 viewWillAppear 等场景）
+- (void)syncCurrentProgressToUI {
+    if (!self.musicPlayerModel.player || !self.musicPlayerModel.nowPlayingSong) {
+        NSLog(@"[MusicPlayerVC] 无法同步进度：播放器或歌曲为空");
+        return;
+    }
+    
+    NSTimeInterval currentTime = CMTimeGetSeconds(self.musicPlayerModel.player.currentTime);
+    NSTimeInterval duration = self.musicPlayerModel.nowPlayingSong.duration / 1000.0;
+    
+    // 处理无效值
+    if (isnan(currentTime) || currentTime < 0) currentTime = 0;
+    if (duration <= 0) return;
+    
+    // 更新滑块位置
+    CGFloat progress = currentTime / duration;
+    self.mainView.mainSlider.value = progress;
+    
+    // 更新当前时间标签
+    [self.mainView updateCurrentTime:currentTime];
+    
+    NSLog(@"[MusicPlayerVC] 同步播放进度到 UI: %.1f / %.1f (%.1f%%)", 
+          currentTime, duration, progress * 100);
 }
 
 /*
