@@ -424,10 +424,11 @@ didCancelLoadingRequest:(AVAssetResourceLoadingRequest *)loadingRequest {
             return nil;
         }
         
-        // ⚠️ 数据有效性检查：分段大小小于 1KB 视为损坏数据
-        if (segmentData.length < 1024) {
-            NSLog(@"[ResourceLoader] L1 分段 %@_%ld 数据损坏 (size=%lu < 1KB)，视为缺失", 
-                  songId, (long)i, (unsigned long)segmentData.length);
+        // 只拒绝完全空的分段（真正损坏的数据）
+        // 不使用 1KB 阈值，因为末段可能合法地小于 1KB
+        if (segmentData.length == 0) {
+            NSLog(@"[ResourceLoader] L1 分段 %@_%ld 为空，视为缺失",
+                  songId, (long)i);
             return nil;
         }
         

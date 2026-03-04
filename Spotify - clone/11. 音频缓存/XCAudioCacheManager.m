@@ -299,6 +299,8 @@
             NSLog(@"[AudioCacheManager] No L2 temp file for song: %@", songId);
             return NO;
         }
+        // 更新 tempPath 为旧格式路径，确保后续文件大小检查使用正确路径
+        tempPath = oldTempPath;
     }
     
     // 【完整性校验】比较 L2 文件实际大小与 HTTP Content-Length
@@ -380,6 +382,10 @@
     [self.memoryManager clearSegmentsForSongId:songId];
     [self.tempManager deleteTempFileForSongId:songId];
     [self.persistentManager deleteCacheForSongId:songId];
+    // 清理 URL 映射，防止 songURLMap 无限增长导致内存泄漏
+    dispatch_barrier_async(self.urlMapQueue, ^{
+        [self.songURLMap removeObjectForKey:songId];
+    });
     NSLog(@"[AudioCacheManager] Deleted all cache for song: %@", songId);
 }
 
