@@ -13,13 +13,33 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <AVFoundation/AVFoundation.h>
 
-@interface XCMusicPlayerViewController ()
+// Phase 3: 评论模块
+#import "XCSongCommentPanel.h"
+#import "XCSongCommentList.h"
+#import "XCSongCommentService.h"
+
+// Phase 5: 楼层评论
+#import "XCSongCommentFloorViewController.h"
+
+@interface XCMusicPlayerViewController () <XCSongCommentPanelDelegate>
 /// 拖动进度条前是否正在播放
 @property (nonatomic, assign) BOOL wasPlayingBeforeSeek;
 /// 是否正在拖动进度条
 @property (nonatomic, assign) BOOL isSeeking;
 /// 进度条更新定时器
 @property (nonatomic, strong) NSTimer *progressTimer;
+
+#pragma mark - Phase 3: 评论面板属性
+/// 评论面板
+@property (nonatomic, strong) XCSongCommentPanel *commentPanel;
+/// 蒙层视图
+@property (nonatomic, strong) UIView *commentMaskView;
+/// 评论面板是否可见（内部存储）
+@property (nonatomic, assign) BOOL commentPanelVisible;
+/// 内容中心Y约束（用于动画）
+@property (nonatomic, strong) MASConstraint *contentCenterYConstraint;
+/// 评论面板展开时浮在可见区域的评论按钮（用于收起面板）
+@property (nonatomic, strong) UIButton *floatingCommentButton;
 @end
 
 @implementation XCMusicPlayerViewController
@@ -48,6 +68,9 @@
 
     // 设置随机/顺序模式按钮响应
     [self.mainView.shuffleModeButton addTarget:self action:@selector(pressShuffle) forControlEvents:UIControlEventTouchUpInside];
+    
+    // Phase 3: 设置评论按钮响应
+    [self.mainView.commentButton addTarget:self action:@selector(pressCommentButton) forControlEvents:UIControlEventTouchUpInside];
     
     // 设置进度条事件监听（Phase A：进度条拖动播放）
     [self setupSliderEventHandlers];
@@ -161,11 +184,13 @@
         : [UIImage systemImageNamed:@"play.fill" withConfiguration:config];
     [self.mainView.playOrStopButton setImage:image forState:UIControlStateNormal];
     
-    // 更新专辑图片动画
-    if (isPlaying) {
-        [self.mainView letAlbumImageBig];
-    } else {
-        [self.mainView letAlbumImageSmall];
+    // 评论面板展开时不更新封面大小，收起时由 hideCommentPanel 按状态恢复
+    if (!self.commentPanelVisible) {
+        if (isPlaying) {
+            [self.mainView letAlbumImageBig];
+        } else {
+            [self.mainView letAlbumImageSmall];
+        }
     }
 }
 
@@ -422,6 +447,223 @@
     dispatch_async(dispatch_get_main_queue(), ^{
         [self updateShuffleButtonState:mode];
     });
+}
+
+#pragma mark - Phase 3: 评论面板
+
+- (void)pressCommentButton {
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+    [feedback impactOccurred];
+    
+    if (self.commentPanelVisible) {
+        [self hideCommentPanel];
+    } else {
+        [self showCommentPanel];
+    }
+}
+
+- (void)showCommentPanel {
+    if (self.commentPanelVisible) return;
+
+    NSLog(@"[MusicPlayerVC] 显示评论面板");
+    self.commentPanelVisible = YES;
+
+    // 确保视图尺寸已确定
+    [self.view layoutIfNeeded];
+
+    CGFloat screenHeight = self.view.bounds.size.height;
+    CGFloat screenWidth  = self.view.bounds.size.width;
+    CGFloat safeTop      = self.view.safeAreaInsets.top;
+    CGFloat panelHeight  = screenHeight * 0.70;
+
+    // 计算专辑图片动画参数（缩小并上移到可见区域上半部）
+    CGFloat albumSize          = screenWidth * 0.618;
+    CGFloat targetAlbumSize    = (screenHeight - panelHeight) * 0.42;   // 可见区域高度的 42%
+    CGFloat albumScale         = targetAlbumSize / albumSize;
+    CGFloat currentAlbumCenterY = safeTop + 100.0 + albumSize * 0.5;
+    CGFloat targetAlbumCenterY  = safeTop + (screenHeight - panelHeight) * 0.38;
+    CGFloat albumTranslateY    = targetAlbumCenterY - currentAlbumCenterY;
+
+    // scale + translate：先缩放再平移（平移在父坐标系中）
+    CGAffineTransform albumTransform = CGAffineTransformConcat(
+        CGAffineTransformMakeScale(albumScale, albumScale),
+        CGAffineTransformMakeTranslation(0, albumTranslateY)
+    );
+
+    // 1. 创建评论面板（首次显示时）
+    if (!self.commentPanel) {
+        self.commentPanel = [[XCSongCommentPanel alloc] init];
+        self.commentPanel.delegate = self;
+        [self.view addSubview:self.commentPanel];
+        [self.commentPanel mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.left.right.equalTo(self.view);
+            make.height.mas_equalTo(panelHeight);
+            make.top.equalTo(self.view.mas_bottom);
+        }];
+        // 应用与播放页同色系的主题背景（稍亮以区分层次）
+        [self.commentPanel applyThemeColor:self.mainView.themeBaseColor];
+    }
+
+    // 2. 创建浮动评论按钮（位于封面下方可见区域，点击可收起面板）
+    if (!self.floatingCommentButton) {
+        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:20
+                                                                                             weight:UIImageSymbolWeightMedium];
+        self.floatingCommentButton = [[UIButton alloc] init];
+        [self.floatingCommentButton setImage:[UIImage systemImageNamed:@"message.fill" withConfiguration:config]
+                                    forState:UIControlStateNormal];
+        self.floatingCommentButton.tintColor = [UIColor whiteColor];
+        self.floatingCommentButton.alpha = 0;
+        [self.floatingCommentButton addTarget:self
+                                       action:@selector(pressCommentButton)
+                             forControlEvents:UIControlEventTouchUpInside];
+        [self.view addSubview:self.floatingCommentButton];
+
+        // 浮动按钮垂直居中于专辑图片底部与面板顶部之间的空隙
+        CGFloat albumBottomAfterTransform = targetAlbumCenterY + targetAlbumSize * 0.5;
+        CGFloat buttonCenterY = albumBottomAfterTransform + (screenHeight - panelHeight - albumBottomAfterTransform) * 0.5;
+        [self.floatingCommentButton mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.centerX.equalTo(self.view);
+            make.centerY.equalTo(self.view.mas_top).offset(buttonCenterY);
+            make.width.height.mas_equalTo(44);
+        }];
+    }
+
+    // 3. 加载评论数据
+    XCSongCommentList *preloadedList = [self.musicPlayerModel getPreloadedCommentList];
+    if (preloadedList) {
+        NSLog(@"[MusicPlayerVC] 使用预加载的评论数据");
+        self.commentPanel.commentList = preloadedList;
+    } else {
+        NSLog(@"[MusicPlayerVC] 预加载数据不存在，立即请求");
+        [self.commentPanel showLoading];
+        [self loadComments];
+    }
+
+    // 4. 执行动画
+    self.view.userInteractionEnabled = NO;
+    [UIView animateWithDuration:0.35 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+        // 专辑封面缩小上移
+        self.mainView.albumImage.transform = albumTransform;
+        self.mainView.containerImageView.transform = albumTransform;
+        // 控制区域淡出
+        self.mainView.controlContainerView.alpha = 0;
+        // 评论面板滑入
+        self.commentPanel.transform = CGAffineTransformMakeTranslation(0, -panelHeight);
+        // 浮动评论按钮淡入
+        self.floatingCommentButton.alpha = 1;
+    } completion:^(BOOL finished) {
+        self.view.userInteractionEnabled = YES;
+    }];
+}
+
+- (void)hideCommentPanel {
+    if (!self.commentPanelVisible) return;
+
+    NSLog(@"[MusicPlayerVC] 隐藏评论面板");
+    self.commentPanelVisible = NO;
+
+    CGFloat panelHeight = self.view.bounds.size.height * 0.70;
+
+    // 按当前播放状态决定封面目标大小
+    CGAffineTransform targetAlbumTransform = self.isPlaying ? self.mainView.scaleTransform : CGAffineTransformIdentity;
+
+    self.view.userInteractionEnabled = NO;
+    [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
+        // 专辑封面恢复到正确播放状态大小
+        self.mainView.albumImage.transform = targetAlbumTransform;
+        self.mainView.containerImageView.transform = targetAlbumTransform;
+        // 控制区域恢复
+        self.mainView.controlContainerView.alpha = 1;
+        // 评论面板滑出
+        self.commentPanel.transform = CGAffineTransformIdentity;
+        // 浮动按钮淡出
+        self.floatingCommentButton.alpha = 0;
+    } completion:^(BOOL finished) {
+        self.view.userInteractionEnabled = YES;
+        [self.commentPanel removeFromSuperview];
+        self.commentPanel = nil;
+        [self.floatingCommentButton removeFromSuperview];
+        self.floatingCommentButton = nil;
+    }];
+}
+
+- (void)loadComments {
+    NSString *songId = self.musicPlayerModel.nowPlayingSong.songId;
+    if (!songId) return;
+
+    __weak typeof(self) weakSelf = self;
+    [[XCSongCommentService sharedInstance] fetchCommentsForSongId:songId
+                                                         sortType:XCCommentSortTypeHot
+                                                            limit:20
+                                                           before:nil
+                                                       completion:^(XCSongCommentList * _Nullable commentList, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            if (commentList) {
+                strongSelf.commentPanel.commentList = commentList;
+            } else {
+                [strongSelf.commentPanel showEmptyState];
+            }
+        });
+    }];
+}
+
+#pragma mark - XCSongCommentPanelDelegate
+
+- (void)commentPanelDidTapClose:(XCSongCommentPanel *)panel {
+    [self hideCommentPanel];
+}
+
+- (void)commentPanel:(XCSongCommentPanel *)panel didChangeSortType:(XCCommentSortType)sortType {
+    NSLog(@"[MusicPlayerVC] 切换评论排序: %ld", (long)sortType);
+    [self.commentPanel showLoading];
+
+    NSString *songId = self.musicPlayerModel.nowPlayingSong.songId;
+    __weak typeof(self) weakSelf = self;
+    [[XCSongCommentService sharedInstance] fetchCommentsForSongId:songId
+                                                         sortType:sortType
+                                                            limit:20
+                                                           before:nil
+                                                       completion:^(XCSongCommentList * _Nullable commentList, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || !commentList) return;
+            strongSelf.commentPanel.commentList = commentList;
+        });
+    }];
+}
+
+- (BOOL)isCommentPanelVisible {
+    return self.commentPanelVisible;
+}
+
+- (void)commentPanelDidRequestLoadMore:(XCSongCommentPanel *)panel {
+    // 加载更多逻辑
+}
+
+- (void)commentPanel:(XCSongCommentPanel *)panel didTapViewReplies:(XCSongComment *)comment {
+    NSLog(@"[MusicPlayerVC] 查看评论回复: %@", comment.commentId);
+
+    NSString *songId = self.musicPlayerModel.nowPlayingSong.songId;
+    if (!songId || !comment.commentId) return;
+
+    XCSongCommentFloorViewController *floorVC = [[XCSongCommentFloorViewController alloc] initWithComment:comment songId:songId];
+    floorVC.modalPresentationStyle = UIModalPresentationPageSheet;
+
+    if (@available(iOS 15.0, *)) {
+        UISheetPresentationController *sheet = floorVC.sheetPresentationController;
+        sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent,
+                          UISheetPresentationControllerDetent.largeDetent];
+        sheet.prefersGrabberVisible = YES;
+        sheet.preferredCornerRadius = 16;
+    }
+
+    [self presentViewController:floorVC animated:YES completion:nil];
+}
+
+- (void)commentPanel:(XCSongCommentPanel *)panel didToggleExpandForComment:(XCSongComment *)comment atIndexPath:(NSIndexPath *)indexPath {
+    // 长评论展开/收起已在面板内部处理
 }
 
 @end

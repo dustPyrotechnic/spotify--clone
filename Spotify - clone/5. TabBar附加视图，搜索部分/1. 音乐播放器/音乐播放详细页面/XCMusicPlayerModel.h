@@ -42,6 +42,17 @@ extern NSString * const XCMusicPlayerPlayModeDidChangeNotification;
 // Phase 8: 预加载触发标记（内部使用）
 @property (nonatomic, assign) BOOL hasTriggeredPreload;
 
+#pragma mark - 评论预加载（Phase 1: 歌曲评论）
+
+/// 当前歌曲的预加载评论数据（仅当前歌曲，切歌时释放）
+@property (nonatomic, strong, nullable) id preloadedCommentList;
+
+/// 预加载评论数据（延迟2秒后执行）
+- (void)preloadCommentsForSong:(NSString *)songId;
+
+/// 获取预加载的评论数据
+- (nullable id)getPreloadedCommentList;
+
 + (instancetype)sharedInstance;
 
 // 测试方法

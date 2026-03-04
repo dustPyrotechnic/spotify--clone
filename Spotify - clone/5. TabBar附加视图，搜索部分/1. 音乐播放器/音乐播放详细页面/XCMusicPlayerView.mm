@@ -11,6 +11,10 @@
 #import <ChameleonFramework/Chameleon.h>
 #import <SDWebImage/SDWebImage.h>
 
+@interface XCMusicPlayerView ()
+@property (nonatomic, strong, readwrite) UIColor *themeBaseColor;
+@end
+
 @implementation XCMusicPlayerView
 #pragma mark - 初始化视图内容
 - (instancetype) init {
@@ -157,6 +161,14 @@
     self.shuffleModeButton.tintColor = [UIColor colorWithWhite:1.0 alpha:0.6];
     self.shuffleModeButton.contentMode = UIViewContentModeScaleAspectFit;
     [self addButtonPressEffect:self.shuffleModeButton];
+    
+    // Phase 2: 初始化评论入口按钮
+    UIImageSymbolConfiguration *commentConfig = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium];
+    self.commentButton = [[UIButton alloc] init];
+    [self.commentButton setImage:[UIImage systemImageNamed:@"message" withConfiguration:commentConfig] forState:UIControlStateNormal];
+    self.commentButton.tintColor = [UIColor colorWithWhite:1.0 alpha:0.8];
+    self.commentButton.contentMode = UIViewContentModeScaleAspectFit;
+    [self addButtonPressEffect:self.commentButton];
 
     // 添加子视图
     [self addSubview:self.albumImage];
@@ -173,6 +185,7 @@
     [self.controlContainerView addSubview:self.nexSongButton];
     [self.controlContainerView addSubview:self.playOrStopButton];
     [self.controlContainerView addSubview:self.shuffleModeButton];
+    [self.controlContainerView addSubview:self.commentButton];
     
     // 添加播放按钮背景的子视图关系
     [self.controlContainerView insertSubview:self.playButtonBackground belowSubview:self.playOrStopButton];
@@ -214,7 +227,8 @@
     NSLog(@"[MusicPlayerView] 开始计算图片平均颜色");
     UIColor* aveColor = [UIColor colorWithAverageColorFromImage:imageToUse];
     NSLog(@"[MusicPlayerView] 平均颜色: %@", aveColor);
-    
+    _themeBaseColor = aveColor;
+
     if (!aveColor) {
         NSLog(@"[MusicPlayerView] ⚠️ 无法获取平均颜色");
         return;
@@ -330,6 +344,13 @@
   [self.nexSongButton mas_makeConstraints:^(MASConstraintMaker *make) {
     make.centerY.equalTo(self.playOrStopButton);
     make.left.equalTo(self.playOrStopButton.mas_right).offset(50);
+    make.width.height.mas_equalTo(44);
+  }];
+  
+  // Phase 2: 评论按钮布局
+  [self.commentButton mas_makeConstraints:^(MASConstraintMaker *make) {
+    make.centerY.equalTo(self.playOrStopButton);
+    make.left.equalTo(self.nexSongButton.mas_right).offset(40);
     make.width.height.mas_equalTo(44);
   }];
 }

@@ -12,6 +12,10 @@
 #import "XCAudioCacheManager.h"
 #import "XCPreloadManager.h"
 
+// Phase 1: 歌曲评论预加载
+#import "XCSongCommentService.h"
+#import "XCSongCommentList.h"
+
 // 旧缓存系统（保留但暂不调用）
 // #import "XCMusicMemoryCache.h"
 
@@ -32,6 +36,10 @@ NSString * const XCMusicPlayerPlayModeDidChangeNotification = @"XCMusicPlayerPla
 @property (nonatomic, strong) NSTimer *lockScreenTimer;
 /// 预加载进度观察者 token（用于移除观察者）
 @property (nonatomic, strong) id preloadProgressObserverToken;
+
+// Phase 1: 评论预加载任务
+@property (nonatomic, strong, nullable) NSURLSessionDataTask *commentPreloadTask;
+@property (nonatomic, copy, nullable) NSString *preloadingSongId;
 @end
 
 @implementation XCMusicPlayerModel
@@ -374,6 +382,19 @@ static XCMusicPlayerModel *instance = nil;
     
     NSLog(@"[PlayerModel] 请求播放歌曲: %@", songId);
     
+    // Phase 1: 取消上一首的评论预加载请求
+    if (self.commentPreloadTask) {
+        [self.commentPreloadTask cancel];
+        self.commentPreloadTask = nil;
+        NSLog(@"[PlayerModel] 取消上一首的评论预加载");
+    }
+    
+    // Phase 1: 丢弃上一首的评论数据（释放内存）
+    if (self.preloadedCommentList) {
+        self.preloadedCommentList = nil;
+        NSLog(@"[PlayerModel] 释放上一首的评论数据");
+    }
+    
     // Phase 8: 重置预加载触发标记
     self.hasTriggeredPreload = NO;
     
@@ -388,6 +409,9 @@ static XCMusicPlayerModel *instance = nil;
         
         [self playWithURL:cachedURL songId:songId];
         [cacheManager setCurrentPrioritySong:songId];
+        
+        // Phase 1: 延迟预加载评论（命中缓存时）
+        [self preloadCommentsForSong:songId];
         return;
     }
     
@@ -410,6 +434,9 @@ static XCMusicPlayerModel *instance = nil;
                 
                 // Phase 8: 设置当前优先歌曲（防止 L1 被清理）
                 [cacheManager setCurrentPrioritySong:songId];
+                
+                // Phase 1: 延迟预加载评论（网络播放时）
+                [strongSelf preloadCommentsForSong:songId];
 
                 // 旧缓存系统调用（已注释，保留代码供参考）
                 /*
@@ -1081,6 +1108,52 @@ static XCMusicPlayerModel *instance = nil;
     [dict setObject:@(rate) forKey:MPNowPlayingInfoPropertyPlaybackRate];
     
     [infoCenter setNowPlayingInfo:dict];
+}
+
+#pragma mark - 评论预加载（Phase 1）
+
+- (void)preloadCommentsForSong:(NSString *)songId {
+    if (!songId || songId.length == 0) {
+        return;
+    }
+    
+    // 记录正在预加载的歌曲ID
+    self.preloadingSongId = songId;
+    
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), 
+                   dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        
+        // 检查是否仍是当前播放的歌曲
+        if (![strongSelf.nowPlayingSong.songId isEqualToString:songId]) {
+            NSLog(@"[PlayerModel] 预加载评论：歌曲已切换，跳过 %@", songId);
+            return;
+        }
+        
+        NSLog(@"[PlayerModel] 开始预加载歌曲 %@ 的评论", songId);
+        
+        // 发起评论请求
+        strongSelf.commentPreloadTask = [[XCSongCommentService sharedInstance] 
+            fetchCommentsForSongId:songId
+                          sortType:XCCommentSortTypeHot
+                             limit:20
+                            before:nil
+                        completion:^(XCSongCommentList * _Nullable commentList, NSError * _Nullable error) {
+            if (!error && commentList) {
+                NSLog(@"[PlayerModel] 评论预加载成功：%ld 条评论", (long)commentList.totalCount);
+                strongSelf.preloadedCommentList = commentList;
+            } else {
+                NSLog(@"[PlayerModel] 评论预加载失败：%@", error.localizedDescription);
+            }
+            strongSelf.commentPreloadTask = nil;
+        }];
+    });
+}
+
+- (nullable id)getPreloadedCommentList {
+    return self.preloadedCommentList;
 }
 
 @end

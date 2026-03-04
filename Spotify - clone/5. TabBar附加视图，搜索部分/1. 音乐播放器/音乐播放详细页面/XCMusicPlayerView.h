@@ -41,10 +41,15 @@ NS_ASSUME_NONNULL_BEGIN
 /// 播放按钮背景视图（用于美化）
 @property (nonatomic, strong) UIView* playButtonBackground;
 
+// Phase 2: 评论入口按钮
+@property (nonatomic, strong) UIButton* commentButton;
+
 // 辅助动画效果
 @property (nonatomic, assign) CGAffineTransform scaleTransform;
 // 用来显示照片图层
 @property (nonatomic, strong) UIView* containerImageView;
+/// 当前封面提取的主题基色（供评论面板等使用）
+@property (nonatomic, strong, readonly, nullable) UIColor *themeBaseColor;
 - (void) letAlbumImageBig;
 - (void) letAlbumImageSmall;
 

@@ -16,6 +16,17 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) XCMusicPlayerModel* musicPlayerModel;
 @property (nonatomic, assign) BOOL isPlaying;
 
+#pragma mark - Phase 3: 评论面板
+
+/// 显示评论面板
+- (void)showCommentPanel;
+
+/// 隐藏评论面板
+- (void)hideCommentPanel;
+
+/// 评论面板是否可见
+- (BOOL)isCommentPanelVisible;
+
 @end
 
 NS_ASSUME_NONNULL_END
