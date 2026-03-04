@@ -102,11 +102,6 @@ static XCPlaylistDatabaseManager *instance = nil;
   NSArray *favorites = [self.database getObjectsOfClass:XC_YYAlbumData.class
                                               fromTable:@"playlists"
                                                   where:XC_YYAlbumData.isFavorites == 1];
-
-
-
-//  NSLog(@"%@",favorites);
-  // 其余列表按排序类型
   NSArray *others;
   switch (sortType) {
     case XCPlaylistSortByCreateTime:
@@ -130,7 +125,7 @@ static XCPlaylistDatabaseManager *instance = nil;
   }
 
   NSMutableArray *result = [NSMutableArray array];
-  NSLog(@"进入判断");
+//  NSLog(@"进入判断");
   if (favorites) {
     [result addObjectsFromArray:favorites];
   }

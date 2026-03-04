@@ -71,16 +71,37 @@
   // 为当前加载生成唯一标识
   
   self.titleLable.text = self.data.name ?: @"";
-  self.imageView.image = nil;
   
   NSURL* url = [NSURL URLWithString:self.data.coverImgUrl];
+  
+  // 优化图片加载选项，减少内存占用
+  // - SDWebImageRetryFailed: 失败时重试
+  // - SDWebImageLowPriority: 低优先级，不阻塞主线程
+  // - SDWebImageAvoidDecodeImage: 避免立即解码，减少内存峰值
+  // - SDWebImageScaleDownLargeImages: 自动缩小大图
+  SDWebImageOptions options = SDWebImageRetryFailed | 
+                              SDWebImageLowPriority | 
+                              SDWebImageAvoidDecodeImage |
+                              SDWebImageScaleDownLargeImages;
+  
+  // 创建图片压缩 Transformer，将图片压缩到 400x400 像素
+  // 实际 Cell 显示尺寸是 170x170，400x400 足够清晰且节省内存
+  id<SDImageTransformer> transformer = [SDImageResizingTransformer transformerWithSize:CGSizeMake(400, 400) 
+                                                                              scaleMode:SDImageScaleModeAspectFill];
+  
+  // 通过 context 传入 transformer
+  SDWebImageContext *context = @{SDWebImageContextImageTransformer: transformer};
+  
   __weak typeof(self) weakSelf = self;
   [self.imageView sd_setImageWithURL:url
                     placeholderImage:nil
-                             options:SDWebImageRetryFailed | SDWebImageLowPriority
+                             options:options
+                             context:context
+                            progress:nil
                            completed:^(UIImage * _Nullable image, NSError * _Nullable error, SDImageCacheType cacheType, NSURL * _Nullable imageURL) {
-    if (image) {
-      weakSelf.imageView.image = image;
+    // 图片已由 SDWebImage 设置到 imageView，无需手动设置
+    if (error) {
+      NSLog(@"[HomePageCell] 图片加载失败: %@", error.localizedDescription);
     }
   }];
 }

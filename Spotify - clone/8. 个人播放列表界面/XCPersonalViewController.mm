@@ -250,7 +250,17 @@ typedef NS_ENUM(NSInteger, XCPersonalViewMode) {
         NSString *coverUrl = [[XCPlaylistDatabaseManager sharedInstance] getFirstSongCoverOfPlaylist:playlist.albumId];
         if (coverUrl && coverUrl.length > 0) {
             NSURL *url = [NSURL URLWithString:coverUrl];
-            [cell.mainImageView sd_setImageWithURL:url];
+            SDWebImageOptions options = SDWebImageRetryFailed | 
+                                        SDWebImageLowPriority | 
+                                        SDWebImageAvoidDecodeImage |
+                                        SDWebImageScaleDownLargeImages;
+            
+            // 创建图片压缩 Transformer，压缩到 200x200 像素
+            id<SDImageTransformer> transformer = [SDImageResizingTransformer transformerWithSize:CGSizeMake(200, 200) 
+                                                                                       scaleMode:SDImageScaleModeAspectFill];
+            SDWebImageContext *context = @{SDWebImageContextImageTransformer: transformer};
+            
+            [cell.mainImageView sd_setImageWithURL:url placeholderImage:nil options:options context:context];
         }
     }
 }
@@ -369,7 +379,17 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
         NSString *coverUrl = [[XCPlaylistDatabaseManager sharedInstance] getFirstSongCoverOfPlaylist:playlist.albumId];
         if (coverUrl && coverUrl.length > 0) {
             NSURL *url = [NSURL URLWithString:coverUrl];
-            [cell.coverImageView sd_setImageWithURL:url];
+            SDWebImageOptions options = SDWebImageRetryFailed | 
+                                        SDWebImageLowPriority | 
+                                        SDWebImageAvoidDecodeImage |
+                                        SDWebImageScaleDownLargeImages;
+            
+            // 创建图片压缩 Transformer，压缩到 300x300 像素
+            id<SDImageTransformer> transformer = [SDImageResizingTransformer transformerWithSize:CGSizeMake(300, 300) 
+                                                                                       scaleMode:SDImageScaleModeAspectFill];
+            SDWebImageContext *context = @{SDWebImageContextImageTransformer: transformer};
+            
+            [cell.coverImageView sd_setImageWithURL:url placeholderImage:nil options:options context:context];
         }
     }
     return cell;

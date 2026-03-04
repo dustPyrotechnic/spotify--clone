@@ -54,6 +54,13 @@
     // Initialization code
 }
 
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    // 清理 collectionView 的 delegate 和 dataSource，防止复用时出现问题
+    self.collectionView.delegate = nil;
+    self.collectionView.dataSource = nil;
+}
+
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated {
     [super setSelected:selected animated:animated];
 

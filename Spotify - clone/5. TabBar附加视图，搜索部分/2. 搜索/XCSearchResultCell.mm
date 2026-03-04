@@ -202,9 +202,25 @@
     NSURL *url = urlString.length > 0 ? [NSURL URLWithString:urlString] : nil;
     UIImage *placeholder = [UIImage systemImageNamed:placeholderName];
     
+    // 优化图片加载选项，减少内存占用
+    SDWebImageOptions options = SDWebImageRetryFailed | 
+                                SDWebImageLowPriority | 
+                                SDWebImageAvoidDecodeImage |
+                                SDWebImageScaleDownLargeImages;
+    
+    // 创建图片压缩 Transformer，将图片压缩到 150x150 像素
+    // 实际 Cell 显示尺寸是 52x52，150x150 足够清晰
+    id<SDImageTransformer> transformer = [SDImageResizingTransformer transformerWithSize:CGSizeMake(150, 150) 
+                                                                               scaleMode:SDImageScaleModeAspectFill];
+    
+    // 通过 context 传入 transformer
+    SDWebImageContext *context = @{SDWebImageContextImageTransformer: transformer};
+    
     [self.coverImageView sd_setImageWithURL:url
                            placeholderImage:placeholder
-                                    options:SDWebImageRetryFailed | SDWebImageLowPriority
+                                    options:options
+                                    context:context
+                                   progress:nil
                                   completed:nil];
 }
 

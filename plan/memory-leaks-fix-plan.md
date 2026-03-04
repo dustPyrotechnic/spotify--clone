@@ -293,11 +293,63 @@ if (artworkImage) {
 
 ---
 
+## 新增修复: SDWebImage 内存缓存无限制 ✅
+
+### 问题描述
+主页滑动时内存占用过高，SDWebImage 默认内存缓存无限制，导致加载大量图片时内存持续增长。
+
+### 修复内容
+
+**1. AppDelegate.m - 配置缓存限制**
+```objc
+- (void)configureSDWebImageCache {
+  SDImageCacheConfig *config = [SDImageCache sharedImageCache].config;
+  
+  // 内存缓存成本限制：50MB
+  config.maxMemoryCost = 50 * 1024 * 1024 / 4;
+  
+  // 内存缓存数量限制：最多 100 张图片
+  config.maxMemoryCount = 100;
+  
+  // 禁用弱引用缓存
+  config.shouldUseWeakMemoryCache = NO;
+  
+  // 磁盘缓存 7 天过期
+  config.maxDiskAge = 7 * 24 * 60 * 60;
+}
+```
+
+**2. 添加内存警告处理**
+```objc
+- (void)applicationDidReceiveMemoryWarning:(UIApplication *)application {
+  [[SDImageCache sharedImageCache] clearMemory];
+}
+```
+
+**3. 优化所有 Cell 的图片加载选项**
+```objc
+SDWebImageOptions options = SDWebImageRetryFailed | 
+                            SDWebImageLowPriority | 
+                            SDWebImageAvoidDecodeImage |      // 避免立即解码
+                            SDWebImageScaleDownLargeImages;   // 自动缩小大图
+```
+
+### 涉及文件
+- `AppDelegate.m` - 添加缓存配置和内存警告处理
+- `HomePageViewCollectionViewCell.mm` - 优化加载选项
+- `XCSearchResultCell.mm` - 优化加载选项
+- `XCALbumDetailViewController.mm` - 优化加载选项
+
+---
+
 ## 总结
 
-所有 9 个内存泄漏问题已全部修复完成，涵盖：
+所有内存泄漏问题已全部修复完成，涵盖：
 - **P1 紧急**: 2 个（NSTimer 循环引用、AVPlayer 观察者 Token 丢失）
 - **P2 本周**: 2 类（Cell block 强引用、dispatch_async 嵌套问题）
 - **P3 优化**: 3 个（网络 block、loadingTasks 超时、MPMediaItemArtwork 大图）
+- **新增**: SDWebImage 内存缓存限制
+
+**总计**: 10 个内存问题全部修复 ✅
 
 建议进行完整的 Instruments Leaks 测试确认修复效果。

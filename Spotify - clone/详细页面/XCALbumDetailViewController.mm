@@ -82,9 +82,21 @@
     
     if (coverUrl && coverUrl.length > 0) {
         NSURL* url = [NSURL URLWithString:coverUrl];
+        SDWebImageOptions options = SDWebImageRetryFailed | 
+                                    SDWebImageLowPriority | 
+                                    SDWebImageAvoidDecodeImage |
+                                    SDWebImageScaleDownLargeImages;
+        
+        // 创建图片压缩 Transformer，压缩到 400x400 像素
+        id<SDImageTransformer> transformer = [SDImageResizingTransformer transformerWithSize:CGSizeMake(400, 400) 
+                                                                                   scaleMode:SDImageScaleModeAspectFill];
+        SDWebImageContext *context = @{SDWebImageContextImageTransformer: transformer};
+        
         [cell.albumImageView sd_setImageWithURL:url
                               placeholderImage:nil
-                                       options:SDWebImageRetryFailed | SDWebImageLowPriority
+                                       options:options
+                                       context:context
+                                      progress:nil
                                      completed:^(UIImage * _Nullable image, NSError * _Nullable error, SDImageCacheType cacheType, NSURL * _Nullable imageURL) {
           // 回调中无需额外处理，SDWebImage 已设置图片
         }];
@@ -133,9 +145,21 @@
 - (void)giveData: (XC_YYSongData*) song ToCell: (XCAlbumDetailCell*) cell {
   NSURL* url = [NSURL URLWithString:song.mainIma];
   __weak typeof(cell) weakCell = cell;
+  SDWebImageOptions options = SDWebImageRetryFailed | 
+                              SDWebImageLowPriority | 
+                              SDWebImageAvoidDecodeImage |
+                              SDWebImageScaleDownLargeImages;
+  
+  // 创建图片压缩 Transformer，压缩到 150x150 像素
+  id<SDImageTransformer> transformer = [SDImageResizingTransformer transformerWithSize:CGSizeMake(150, 150) 
+                                                                             scaleMode:SDImageScaleModeAspectFill];
+  SDWebImageContext *context = @{SDWebImageContextImageTransformer: transformer};
+  
   [cell.mainImageView sd_setImageWithURL:url
                         placeholderImage:nil
-                                 options:SDWebImageRetryFailed | SDWebImageLowPriority
+                                 options:options
+                                 context:context
+                                progress:nil
                                completed:^(UIImage * _Nullable image, NSError * _Nullable error, SDImageCacheType cacheType, NSURL * _Nullable imageURL) {
     if (image && weakCell) {
       weakCell.mainImageView.image = image;

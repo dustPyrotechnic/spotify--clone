@@ -65,6 +65,24 @@ static XCMusicPlayerModel *instance = nil;
     [self setupRemoteCommands];
     return self;
 }
+
+- (void)dealloc {
+    NSLog(@"[PlayerModel] 播放器释放");
+    // 清理定时器
+    [self stopLockScreenProgressTimer];
+    
+    // 清理预加载观察者
+    if (self.preloadProgressObserverToken) {
+        [self.player removeTimeObserver:self.preloadProgressObserverToken];
+        self.preloadProgressObserverToken = nil;
+    }
+    
+    // 清理当前播放项
+    [self cleanupCurrentPlayerItem];
+    
+    // 清理播放器
+    self.player = nil;
+}
 - (void)setNowPlayingSong:(XC_YYSongData *)nowPlayingSong {
     NSLog(@"[PlayerModel] 当前歌曲变更: %@ -> %@", _nowPlayingSong.name ?: @"无", nowPlayingSong.name);
     _nowPlayingSong = nowPlayingSong;
@@ -425,6 +443,9 @@ static XCMusicPlayerModel *instance = nil;
         NSLog(@"[PlayerModel] 切歌前清理预加载观察者");
     }
     
+    // 切歌前清理旧播放项的 KVO 监听和通知，防止内存泄漏
+    [self cleanupCurrentPlayerItem];
+    
     // 判断是本地文件还是网络 URL
     BOOL isLocalFile = [url.scheme isEqualToString:@"file"];
     
@@ -471,6 +492,26 @@ static XCMusicPlayerModel *instance = nil;
     
     // 不要在这里立即调用 play，等待 status 变为 AVPlayerItemStatusReadyToPlay
     NSLog(@"[PlayerModel] 等待资源加载完成...");
+}
+
+/// 清理当前播放项的 KVO 监听和通知，防止内存泄漏
+- (void)cleanupCurrentPlayerItem {
+    AVPlayerItem *currentItem = self.player.currentItem;
+    if (!currentItem) return;
+    
+    @try {
+        // 移除 KVO 监听
+        [currentItem removeObserver:self forKeyPath:@"status"];
+        NSLog(@"[PlayerModel] 清理旧播放项 KVO 监听");
+    } @catch (NSException *exception) {
+        // 可能已经被移除了，忽略错误
+        NSLog(@"[PlayerModel] 移除 KVO 监听时发生异常（可能已移除）: %@", exception);
+    }
+    
+    // 移除播放完成通知
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:AVPlayerItemDidPlayToEndTimeNotification
+                                                  object:currentItem];
 }
 
 /// 移除播放完成通知监听
