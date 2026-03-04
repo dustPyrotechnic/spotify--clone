@@ -12,6 +12,7 @@
 #import <Masonry/Masonry.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <AVFoundation/AVFoundation.h>
+#import <SDWebImage/SDWebImage.h>
 
 // Phase 3: 评论模块
 #import "XCSongCommentPanel.h"
@@ -21,7 +22,10 @@
 // Phase 5: 楼层评论
 #import "XCSongCommentFloorViewController.h"
 
-@interface XCMusicPlayerViewController () <XCSongCommentPanelDelegate>
+// 迷你播放控制器（评论面板展开时使用）
+#import "XCMiniPlayerView.h"
+
+@interface XCMusicPlayerViewController () <XCSongCommentPanelDelegate, XCMusicPlayerViewDelegate>
 /// 拖动进度条前是否正在播放
 @property (nonatomic, assign) BOOL wasPlayingBeforeSeek;
 /// 是否正在拖动进度条
@@ -38,8 +42,8 @@
 @property (nonatomic, assign) BOOL commentPanelVisible;
 /// 内容中心Y约束（用于动画）
 @property (nonatomic, strong) MASConstraint *contentCenterYConstraint;
-/// 评论面板展开时浮在可见区域的评论按钮（用于收起面板）
-@property (nonatomic, strong) UIButton *floatingCommentButton;
+/// 评论面板展开时显示在上方的迷你播放控制器
+@property (nonatomic, strong) XCMiniPlayerView *miniPlayerView;
 @end
 
 @implementation XCMusicPlayerViewController
@@ -54,6 +58,7 @@
     NSLog(@"[MusicPlayerVC] 初始化主视图");
     // 初始化主视图
     self.mainView = [[XCMusicPlayerView alloc] init];
+    self.mainView.delegate = self;
     NSLog(@"[MusicPlayerVC] 主视图初始化完成: %@", self.mainView);
     
     // 设置播放按钮响应
@@ -81,6 +86,10 @@
     [self.mainView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.edges.equalTo(self.view);
     }];
+    
+    // 设置根视图背景色与评论面板一致，避免动画时出现颜色闪烁
+    // 评论面板颜色是主题色的 0.9 倍（darken 10%）
+    self.view.backgroundColor = [self themeBackgroundColor];
     
     // 注册通知监听
     [self registerNotifications];
@@ -120,6 +129,25 @@
     [self syncCurrentProgressToUI];
 }
 
+#pragma mark - 主题颜色
+
+/// 获取与评论面板一致的背景色（主题色的 0.9 倍）
+- (UIColor *)themeBackgroundColor {
+    UIColor *baseColor = self.mainView.themeBaseColor;
+    if (!baseColor) {
+        return [UIColor colorWithWhite:0.12 alpha:1.0]; // 默认深色背景
+    }
+    CGFloat r, g, b, a;
+    if (![baseColor getRed:&r green:&g blue:&b alpha:&a]) {
+        return [UIColor colorWithWhite:0.12 alpha:1.0];
+    }
+    // 与评论面板保持一致：darken 10%
+    return [UIColor colorWithRed:r * 0.90
+                           green:g * 0.90
+                            blue:b * 0.90
+                           alpha:1.0];
+}
+
 #pragma mark - 通知注册
 
 - (void)registerNotifications {
@@ -155,6 +183,29 @@
     dispatch_async(dispatch_get_main_queue(), ^{
         NSLog(@"[MusicPlayerVC] 主线程中调用 configureWithSong");
         [self.mainView configureWithSong:song];
+        
+        // 重置播放进度显示（主视图和迷你播放器）
+        [self syncCurrentProgressToUI];
+        
+        // 如果评论面板展开，更新评论数据和迷你播放器内容
+        // 注意：颜色更新通过委托方法 musicPlayerView:didUpdateThemeColor: 异步处理
+        if (self.commentPanelVisible) {
+            NSLog(@"[MusicPlayerVC] 评论面板展开中，同步更新迷你播放器和评论");
+            
+            // 更新迷你播放器内容（歌曲信息、封面、进度）
+            [self updateMiniPlayerContent];
+            
+            // 重新加载新歌曲的评论
+            XCSongCommentList *preloadedList = [self.musicPlayerModel getPreloadedCommentList];
+            if (preloadedList) {
+                NSLog(@"[MusicPlayerVC] 使用预加载的评论数据");
+                self.commentPanel.commentList = preloadedList;
+            } else {
+                NSLog(@"[MusicPlayerVC] 预加载数据不存在，立即请求");
+                [self.commentPanel showLoading];
+                [self loadComments];
+            }
+        }
     });
 }
 
@@ -191,6 +242,16 @@
         } else {
             [self.mainView letAlbumImageSmall];
         }
+    }
+
+    // 同步迷你播放器的播放按钮图标
+    if (self.miniPlayerView) {
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration
+            configurationWithPointSize:22 weight:UIImageSymbolWeightBold];
+        NSString *iconName = isPlaying ? @"pause.fill" : @"play.fill";
+        [self.miniPlayerView.playPauseButton setImage:[UIImage systemImageNamed:iconName
+                                                             withConfiguration:cfg]
+                                             forState:UIControlStateNormal];
     }
 }
 
@@ -382,11 +443,16 @@
     // 处理无效值
     if (isnan(currentTime) || currentTime < 0) currentTime = 0;
     if (duration <= 0) return;
-    
+
     // 更新滑块位置
     CGFloat progress = currentTime / duration;
     self.mainView.mainSlider.value = progress;
-    
+
+    // 同步迷你播放器进度条
+    if (self.miniPlayerView) {
+        self.miniPlayerView.progressView.progress = progress;
+    }
+
     // 更新当前时间标签
     [self.mainView updateCurrentTime:currentTime];
 }
@@ -408,6 +474,11 @@
     // 更新滑块位置
     CGFloat progress = currentTime / duration;
     self.mainView.mainSlider.value = progress;
+    
+    // 同步迷你播放器进度条
+    if (self.miniPlayerView) {
+        self.miniPlayerView.progressView.progress = progress;
+    }
     
     // 更新当前时间标签
     [self.mainView updateCurrentTime:currentTime];
@@ -468,29 +539,14 @@
     NSLog(@"[MusicPlayerVC] 显示评论面板");
     self.commentPanelVisible = YES;
 
-    // 确保视图尺寸已确定
     [self.view layoutIfNeeded];
-
     CGFloat screenHeight = self.view.bounds.size.height;
-    CGFloat screenWidth  = self.view.bounds.size.width;
-    CGFloat safeTop      = self.view.safeAreaInsets.top;
     CGFloat panelHeight  = screenHeight * 0.70;
 
-    // 计算专辑图片动画参数（缩小并上移到可见区域上半部）
-    CGFloat albumSize          = screenWidth * 0.618;
-    CGFloat targetAlbumSize    = (screenHeight - panelHeight) * 0.42;   // 可见区域高度的 42%
-    CGFloat albumScale         = targetAlbumSize / albumSize;
-    CGFloat currentAlbumCenterY = safeTop + 100.0 + albumSize * 0.5;
-    CGFloat targetAlbumCenterY  = safeTop + (screenHeight - panelHeight) * 0.38;
-    CGFloat albumTranslateY    = targetAlbumCenterY - currentAlbumCenterY;
+    // 更新根视图背景色与评论面板一致，避免动画时颜色闪烁
+    self.view.backgroundColor = [self themeBackgroundColor];
 
-    // scale + translate：先缩放再平移（平移在父坐标系中）
-    CGAffineTransform albumTransform = CGAffineTransformConcat(
-        CGAffineTransformMakeScale(albumScale, albumScale),
-        CGAffineTransformMakeTranslation(0, albumTranslateY)
-    );
-
-    // 1. 创建评论面板（首次显示时）
+    // 1. 创建评论面板
     if (!self.commentPanel) {
         self.commentPanel = [[XCSongCommentPanel alloc] init];
         self.commentPanel.delegate = self;
@@ -500,32 +556,39 @@
             make.height.mas_equalTo(panelHeight);
             make.top.equalTo(self.view.mas_bottom);
         }];
-        // 应用与播放页同色系的主题背景（稍亮以区分层次）
         [self.commentPanel applyThemeColor:self.mainView.themeBaseColor];
     }
 
-    // 2. 创建浮动评论按钮（位于封面下方可见区域，点击可收起面板）
-    if (!self.floatingCommentButton) {
-        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:20
-                                                                                             weight:UIImageSymbolWeightMedium];
-        self.floatingCommentButton = [[UIButton alloc] init];
-        [self.floatingCommentButton setImage:[UIImage systemImageNamed:@"message.fill" withConfiguration:config]
-                                    forState:UIControlStateNormal];
-        self.floatingCommentButton.tintColor = [UIColor whiteColor];
-        self.floatingCommentButton.alpha = 0;
-        [self.floatingCommentButton addTarget:self
-                                       action:@selector(pressCommentButton)
-                             forControlEvents:UIControlEventTouchUpInside];
-        [self.view addSubview:self.floatingCommentButton];
-
-        // 浮动按钮垂直居中于专辑图片底部与面板顶部之间的空隙
-        CGFloat albumBottomAfterTransform = targetAlbumCenterY + targetAlbumSize * 0.5;
-        CGFloat buttonCenterY = albumBottomAfterTransform + (screenHeight - panelHeight - albumBottomAfterTransform) * 0.5;
-        [self.floatingCommentButton mas_makeConstraints:^(MASConstraintMaker *make) {
-            make.centerX.equalTo(self.view);
-            make.centerY.equalTo(self.view.mas_top).offset(buttonCenterY);
-            make.width.height.mas_equalTo(44);
+    // 2. 创建迷你播放控制器（填充评论面板上方的可见区域）
+    if (!self.miniPlayerView) {
+        self.miniPlayerView = [[XCMiniPlayerView alloc] init];
+        self.miniPlayerView.alpha = 0;
+        [self.view addSubview:self.miniPlayerView];
+        [self.miniPlayerView mas_makeConstraints:^(MASConstraintMaker *make) {
+            make.top.equalTo(self.view.mas_safeAreaLayoutGuideTop);
+            make.left.right.equalTo(self.view);
+            make.bottom.equalTo(self.view.mas_bottom).offset(-panelHeight);
         }];
+
+        // 绑定按钮事件
+        [self.miniPlayerView.shuffleButton addTarget:self
+                                              action:@selector(pressShuffle)
+                                    forControlEvents:UIControlEventTouchUpInside];
+        [self.miniPlayerView.prevButton addTarget:self
+                                           action:@selector(pressPreviousSong)
+                                 forControlEvents:UIControlEventTouchUpInside];
+        [self.miniPlayerView.playPauseButton addTarget:self
+                                                action:@selector(pressPlayOrStopButton)
+                                      forControlEvents:UIControlEventTouchUpInside];
+        [self.miniPlayerView.nextButton addTarget:self
+                                           action:@selector(pressNextSong)
+                                 forControlEvents:UIControlEventTouchUpInside];
+        [self.miniPlayerView.commentButton addTarget:self
+                                              action:@selector(pressCommentButton)
+                                    forControlEvents:UIControlEventTouchUpInside];
+
+        [self updateMiniPlayerContent];
+        [self.miniPlayerView applyThemeColor:self.mainView.themeBaseColor];
     }
 
     // 3. 加载评论数据
@@ -539,18 +602,12 @@
         [self loadComments];
     }
 
-    // 4. 执行动画
+    // 4. 动画：主视图淡出，迷你播放器淡入，面板滑入
     self.view.userInteractionEnabled = NO;
     [UIView animateWithDuration:0.35 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-        // 专辑封面缩小上移
-        self.mainView.albumImage.transform = albumTransform;
-        self.mainView.containerImageView.transform = albumTransform;
-        // 控制区域淡出
-        self.mainView.controlContainerView.alpha = 0;
-        // 评论面板滑入
+        self.mainView.alpha = 0;
         self.commentPanel.transform = CGAffineTransformMakeTranslation(0, -panelHeight);
-        // 浮动评论按钮淡入
-        self.floatingCommentButton.alpha = 1;
+        self.miniPlayerView.alpha = 1;
     } completion:^(BOOL finished) {
         self.view.userInteractionEnabled = YES;
     }];
@@ -563,28 +620,61 @@
     self.commentPanelVisible = NO;
 
     CGFloat panelHeight = self.view.bounds.size.height * 0.70;
-
-    // 按当前播放状态决定封面目标大小
-    CGAffineTransform targetAlbumTransform = self.isPlaying ? self.mainView.scaleTransform : CGAffineTransformIdentity;
+    // 直接恢复到正确的播放状态大小，与主视图淡入同步完成
+    CGAffineTransform targetAlbumTransform = self.isPlaying ? self.mainView.scaleTransform
+                                                            : CGAffineTransformIdentity;
 
     self.view.userInteractionEnabled = NO;
     [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
-        // 专辑封面恢复到正确播放状态大小
+        self.mainView.alpha = 1;
         self.mainView.albumImage.transform = targetAlbumTransform;
         self.mainView.containerImageView.transform = targetAlbumTransform;
-        // 控制区域恢复
-        self.mainView.controlContainerView.alpha = 1;
-        // 评论面板滑出
         self.commentPanel.transform = CGAffineTransformIdentity;
-        // 浮动按钮淡出
-        self.floatingCommentButton.alpha = 0;
+        self.miniPlayerView.alpha = 0;
     } completion:^(BOOL finished) {
         self.view.userInteractionEnabled = YES;
         [self.commentPanel removeFromSuperview];
         self.commentPanel = nil;
-        [self.floatingCommentButton removeFromSuperview];
-        self.floatingCommentButton = nil;
+        [self.miniPlayerView removeFromSuperview];
+        self.miniPlayerView = nil;
     }];
+}
+
+/// 填充迷你播放器的歌曲信息和播放状态
+- (void)updateMiniPlayerContent {
+    if (!self.miniPlayerView) return;
+
+    XC_YYSongData *song = self.musicPlayerModel.nowPlayingSong;
+    self.miniPlayerView.songNameLabel.text  = song.name   ?: @"未知歌曲";
+    self.miniPlayerView.artistLabel.text    = song.artist ?: @"未知艺术家";
+    
+    // 加载专辑封面 - 优先使用主视图已加载的图片，如果没有则独立加载
+    if (self.mainView.albumImage.image && [self isSameSong:song image:self.mainView.albumImage.image]) {
+        self.miniPlayerView.albumImageView.image = self.mainView.albumImage.image;
+    } else if (song.mainIma) {
+        // 独立加载封面
+        NSURL *imageURL = [NSURL URLWithString:song.mainIma];
+        [self.miniPlayerView.albumImageView sd_setImageWithURL:imageURL
+                                            placeholderImage:self.mainView.albumImage.image
+                                                     options:SDWebImageRetryFailed];
+    }
+
+    // 播放 / 暂停按钮图标
+    UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration
+        configurationWithPointSize:22 weight:UIImageSymbolWeightBold];
+    NSString *iconName = self.isPlaying ? @"pause.fill" : @"play.fill";
+    [self.miniPlayerView.playPauseButton setImage:[UIImage systemImageNamed:iconName
+                                                         withConfiguration:cfg]
+                                         forState:UIControlStateNormal];
+
+    // 当前进度
+    self.miniPlayerView.progressView.progress = self.mainView.mainSlider.value;
+}
+
+/// 判断图片是否属于当前歌曲（简单判断：图片不为空即可）
+- (BOOL)isSameSong:(XC_YYSongData *)song image:(UIImage *)image {
+    // 只要主视图有图片，就认为是当前歌曲的（因为切歌时会立即开始加载新封面）
+    return image != nil;
 }
 
 - (void)loadComments {
@@ -615,24 +705,7 @@
     [self hideCommentPanel];
 }
 
-- (void)commentPanel:(XCSongCommentPanel *)panel didChangeSortType:(XCCommentSortType)sortType {
-    NSLog(@"[MusicPlayerVC] 切换评论排序: %ld", (long)sortType);
-    [self.commentPanel showLoading];
-
-    NSString *songId = self.musicPlayerModel.nowPlayingSong.songId;
-    __weak typeof(self) weakSelf = self;
-    [[XCSongCommentService sharedInstance] fetchCommentsForSongId:songId
-                                                         sortType:sortType
-                                                            limit:20
-                                                           before:nil
-                                                       completion:^(XCSongCommentList * _Nullable commentList, NSError * _Nullable error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf || !commentList) return;
-            strongSelf.commentPanel.commentList = commentList;
-        });
-    }];
-}
+// 注意：热门/最新分栏控件已移除，API 不支持排序切换
 
 - (BOOL)isCommentPanelVisible {
     return self.commentPanelVisible;
@@ -664,6 +737,27 @@
 
 - (void)commentPanel:(XCSongCommentPanel *)panel didToggleExpandForComment:(XCSongComment *)comment atIndexPath:(NSIndexPath *)indexPath {
     // 长评论展开/收起已在面板内部处理
+}
+
+#pragma mark - XCMusicPlayerViewDelegate
+
+/// 主题色更新回调（图片加载完成后触发）
+- (void)musicPlayerView:(XCMusicPlayerView *)view didUpdateThemeColor:(UIColor *)themeColor {
+    NSLog(@"[MusicPlayerVC] 收到主题色更新: %@", themeColor);
+    
+    // 如果评论面板展开，同步更新所有相关视图的颜色
+    if (self.commentPanelVisible) {
+        NSLog(@"[MusicPlayerVC] 评论面板展开中，同步更新颜色");
+        
+        // 更新根视图背景色
+        self.view.backgroundColor = [self themeBackgroundColor];
+        
+        // 更新评论面板颜色
+        [self.commentPanel applyThemeColor:themeColor];
+        
+        // 更新迷你播放器颜色
+        [self.miniPlayerView applyThemeColor:themeColor];
+    }
 }
 
 @end

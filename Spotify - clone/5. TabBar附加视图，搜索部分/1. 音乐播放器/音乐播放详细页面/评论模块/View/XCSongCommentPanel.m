@@ -6,21 +6,15 @@
 //
 
 #import "XCSongCommentPanel.h"
-#import "XCSongCommentDragHandle.h"
 #import "XCSongCommentCell.h"
 #import <Masonry/Masonry.h>
 
 @interface XCSongCommentPanel () <UITableViewDataSource, UITableViewDelegate, XCSongCommentCellDelegate>
 
 // UI 组件
-@property (nonatomic, strong) XCSongCommentDragHandle *dragHandle;
-@property (nonatomic, strong) UISegmentedControl *segmentedControl;
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
 @property (nonatomic, strong) UILabel *emptyLabel;
-
-// 当前排序类型
-@property (nonatomic, assign) XCCommentSortType currentSortType;
 
 @end
 
@@ -40,24 +34,14 @@
     self.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
     self.clipsToBounds = YES;
     
-    // 拖拽指示条
-    self.dragHandle = [[XCSongCommentDragHandle alloc] init];
-    [self addSubview:self.dragHandle];
-    
-    // 分段控件
-    self.segmentedControl = [[UISegmentedControl alloc] initWithItems:@[@"热门评论", @"最新评论"]];
-    self.segmentedControl.selectedSegmentIndex = 0;
-    self.segmentedControl.backgroundColor = [UIColor colorWithWhite:0.2 alpha:1.0];
-    self.segmentedControl.selectedSegmentTintColor = [UIColor colorWithWhite:0.3 alpha:1.0];
-    [self.segmentedControl setTitleTextAttributes:@{NSForegroundColorAttributeName: [UIColor colorWithWhite:0.8 alpha:1.0]} forState:UIControlStateNormal];
-    [self.segmentedControl setTitleTextAttributes:@{NSForegroundColorAttributeName: [UIColor whiteColor]} forState:UIControlStateSelected];
-    [self.segmentedControl addTarget:self action:@selector(sortChanged:) forControlEvents:UIControlEventValueChanged];
-    [self addSubview:self.segmentedControl];
-    
-    // 表格
-    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleGrouped];
+    // 表格 - 使用 Plain 样式避免 Grouped 样式的白色背景区域
+    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.backgroundColor = [UIColor clearColor];
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    // iOS 15+ 需要设置 sectionHeaderTopPadding 为 0，避免顶部留白
+    if (@available(iOS 15.0, *)) {
+        self.tableView.sectionHeaderTopPadding = 0;
+    }
     self.tableView.dataSource = self;
     self.tableView.delegate = self;
     self.tableView.contentInset = UIEdgeInsetsMake(0, 0, 20, 0);
@@ -87,24 +71,9 @@
 }
 
 - (void)setupConstraints {
-    // 拖拽指示条
-    [self.dragHandle mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self).offset(8);
-        make.left.right.equalTo(self);
-        make.height.mas_equalTo(24);
-    }];
-    
-    // 分段控件
-    [self.segmentedControl mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.dragHandle.mas_bottom).offset(8);
-        make.centerX.equalTo(self);
-        make.width.mas_equalTo(200);
-        make.height.mas_equalTo(32);
-    }];
-    
-    // 表格
+    // 表格 - 顶部留一点边距
     [self.tableView mas_makeConstraints:^(MASConstraintMaker *make) {
-        make.top.equalTo(self.segmentedControl.mas_bottom).offset(8);
+        make.top.equalTo(self).offset(12);
         make.left.right.bottom.equalTo(self);
     }];
     
@@ -148,18 +117,6 @@
         self.emptyLabel.hidden = YES;
         self.tableView.hidden = NO;
         [self.tableView reloadData];
-    }
-}
-
-#pragma mark - Actions
-
-- (void)sortChanged:(UISegmentedControl *)sender {
-    XCCommentSortType newType = sender.selectedSegmentIndex == 0 ? XCCommentSortTypeHot : XCCommentSortTypeLatest;
-    if (newType != self.currentSortType) {
-        self.currentSortType = newType;
-        if ([self.delegate respondsToSelector:@selector(commentPanel:didChangeSortType:)]) {
-            [self.delegate commentPanel:self didChangeSortType:newType];
-        }
     }
 }
 
@@ -235,6 +192,32 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:NO];
+}
+
+// 自定义 section header 视图，设置背景色与面板一致
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
+    NSString *title = [self tableView:tableView titleForHeaderInSection:section];
+    
+    UIView *headerView = [[UIView alloc] init];
+    headerView.backgroundColor = [UIColor clearColor];
+    
+    UILabel *label = [[UILabel alloc] init];
+    label.font = [UIFont boldSystemFontOfSize:16];
+    label.textColor = [UIColor colorWithWhite:0.9 alpha:1.0];
+    label.text = title;
+    [headerView addSubview:label];
+    
+    [label mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.left.equalTo(headerView).offset(16);
+        make.right.equalTo(headerView).offset(-16);
+        make.centerY.equalTo(headerView);
+    }];
+    
+    return headerView;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
+    return 40;
 }
 
 #pragma mark - XCSongCommentCellDelegate

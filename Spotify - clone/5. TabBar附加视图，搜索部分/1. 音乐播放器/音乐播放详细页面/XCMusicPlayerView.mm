@@ -227,6 +227,9 @@
     NSLog(@"[MusicPlayerView] 开始计算图片平均颜色");
     UIColor* aveColor = [UIColor colorWithAverageColorFromImage:imageToUse];
     NSLog(@"[MusicPlayerView] 平均颜色: %@", aveColor);
+    
+    // 检查主题色是否真的变化了
+    BOOL colorChanged = ![self isColor:_themeBaseColor equalToColor:aveColor];
     _themeBaseColor = aveColor;
 
     if (!aveColor) {
@@ -241,7 +244,28 @@
     NSLog(@"[MusicPlayerView] 渐变色: %@", gradientColor);
     
     self.backgroundColor = gradientColor;
+    
+    // 通知委托主题色已更新
+    if (colorChanged && [self.delegate respondsToSelector:@selector(musicPlayerView:didUpdateThemeColor:)]) {
+        NSLog(@"[MusicPlayerView] 通知委托主题色更新: %@", aveColor);
+        [self.delegate musicPlayerView:self didUpdateThemeColor:aveColor];
+    }
+    
     NSLog(@"[MusicPlayerView] layoutSubviews 完成");
+}
+
+/// 比较两个颜色是否相等（简单比较 RGB 值）
+- (BOOL)isColor:(UIColor *)color1 equalToColor:(UIColor *)color2 {
+    if (!color1 && !color2) return YES;
+    if (!color1 || !color2) return NO;
+    
+    CGFloat r1, g1, b1, a1;
+    CGFloat r2, g2, b2, a2;
+    
+    if (![color1 getRed:&r1 green:&g1 blue:&b1 alpha:&a1]) return NO;
+    if (![color2 getRed:&r2 green:&g2 blue:&b2 alpha:&a2]) return NO;
+    
+    return (fabs(r1 - r2) < 0.01 && fabs(g1 - g2) < 0.01 && fabs(b1 - b2) < 0.01);
 }
 - (void)setupConstraints {
   [self.containerImageView mas_makeConstraints:^(MASConstraintMaker *make) {

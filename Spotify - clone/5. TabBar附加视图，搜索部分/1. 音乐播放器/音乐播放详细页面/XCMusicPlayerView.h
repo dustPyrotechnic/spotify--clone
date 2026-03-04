@@ -10,6 +10,14 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class XCMusicPlayerView;
+
+@protocol XCMusicPlayerViewDelegate <NSObject>
+@optional
+/// 主题色更新回调（图片加载完成后触发）
+- (void)musicPlayerView:(XCMusicPlayerView *)view didUpdateThemeColor:(UIColor *)themeColor;
+@end
+
 @interface XCMusicPlayerView : UIView
 // 歌曲信息
 @property (nonatomic, strong) UIImage* image;
@@ -50,6 +58,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIView* containerImageView;
 /// 当前封面提取的主题基色（供评论面板等使用）
 @property (nonatomic, strong, readonly, nullable) UIColor *themeBaseColor;
+
+/// 委托对象
+@property (nonatomic, weak) id<XCMusicPlayerViewDelegate> delegate;
+
 - (void) letAlbumImageBig;
 - (void) letAlbumImageSmall;
 
