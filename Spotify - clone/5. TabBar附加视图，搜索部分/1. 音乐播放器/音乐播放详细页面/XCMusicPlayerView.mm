@@ -347,15 +347,18 @@
   }];
 
   // 控制按钮布局 - 优化间距和层级
+  // 【修正】遵循 Apple HIG：按钮与屏幕边缘保持最小 20pt 边距，避免紧贴边缘
   [self.shuffleModeButton mas_makeConstraints:^(MASConstraintMaker *make) {
-    make.right.equalTo(self.preSongButton.mas_left).offset(-40);
+    // 与左边缘保持安全边距（至少 20pt），不紧贴屏幕边缘
+    make.left.equalTo(self.controlContainerView).offset(20);
+    make.right.equalTo(self.preSongButton.mas_left).offset(-30);
     make.centerY.equalTo(self.playOrStopButton);
     make.width.height.mas_equalTo(44);
   }];
   
   [self.preSongButton mas_makeConstraints:^(MASConstraintMaker *make) {
     make.centerY.equalTo(self.playOrStopButton);
-    make.right.equalTo(self.playOrStopButton.mas_left).offset(-50);
+    make.right.equalTo(self.playOrStopButton.mas_left).offset(-40);
     make.width.height.mas_equalTo(44);
   }];
   
@@ -367,14 +370,17 @@
   
   [self.nexSongButton mas_makeConstraints:^(MASConstraintMaker *make) {
     make.centerY.equalTo(self.playOrStopButton);
-    make.left.equalTo(self.playOrStopButton.mas_right).offset(50);
+    make.left.equalTo(self.playOrStopButton.mas_right).offset(40);
     make.width.height.mas_equalTo(44);
   }];
   
   // Phase 2: 评论按钮布局
+  // 【修正】遵循 Apple HIG：按钮与右边缘保持最小 20pt 边距，避免紧贴屏幕边缘
   [self.commentButton mas_makeConstraints:^(MASConstraintMaker *make) {
     make.centerY.equalTo(self.playOrStopButton);
-    make.left.equalTo(self.nexSongButton.mas_right).offset(40);
+    make.left.equalTo(self.nexSongButton.mas_right).offset(30);
+    // 与右边缘保持安全边距（至少 20pt），不紧贴屏幕边缘
+    make.right.lessThanOrEqualTo(self.controlContainerView).offset(-20);
     make.width.height.mas_equalTo(44);
   }];
 }

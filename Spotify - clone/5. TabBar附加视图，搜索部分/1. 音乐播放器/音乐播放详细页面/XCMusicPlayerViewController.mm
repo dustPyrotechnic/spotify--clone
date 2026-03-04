@@ -32,6 +32,8 @@
 @property (nonatomic, assign) BOOL isSeeking;
 /// 进度条更新定时器
 @property (nonatomic, strong) NSTimer *progressTimer;
+/// 资源加载检查定时器（用于快速打开页面时检查加载状态）
+@property (nonatomic, strong) NSTimer *loadingCheckTimer;
 
 #pragma mark - Phase 3: 评论面板属性
 /// 评论面板
@@ -102,11 +104,22 @@
     if (self.musicPlayerModel.nowPlayingSong) {
         NSLog(@"[MusicPlayerVC] 有正在播放的歌曲，调用 configureWithSong");
         [self.mainView configureWithSong:self.musicPlayerModel.nowPlayingSong];
-        // 同步播放按钮状态（使用 Model 维护的状态）
-        [self updatePlayButtonState:self.musicPlayerModel.isPlaying];
+        
+        // 【修复】检查播放状态：正在播放或正在加载都显示为播放状态
+        BOOL shouldShowPlaying = self.musicPlayerModel.isPlaying || self.musicPlayerModel.isLoading;
+        NSLog(@"[MusicPlayerVC] 同步播放按钮状态: isPlaying=%d, isLoading=%d, 显示=%d",
+              self.musicPlayerModel.isPlaying, self.musicPlayerModel.isLoading, shouldShowPlaying);
+        [self updatePlayButtonState:shouldShowPlaying];
+        
         // 如果正在播放，启动进度条定时器
         if (self.musicPlayerModel.isPlaying) {
             [self startProgressTimer];
+        }
+        
+        // 【修复】如果正在加载资源，启动定时器检查加载完成
+        if (self.musicPlayerModel.isLoading) {
+            NSLog(@"[MusicPlayerVC] 资源正在加载中，启动检查定时器");
+            [self startLoadingCheckTimer];
         }
     } else {
         NSLog(@"[MusicPlayerVC] 没有正在播放的歌曲");
@@ -119,11 +132,32 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     // 停止定时器
     [self stopProgressTimer];
+    [self stopLoadingCheckTimer];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     NSLog(@"[MusicPlayerVC] viewWillAppear");
+    
+    // 【修复】再次检查播放状态，确保快速打开页面时显示正确
+    // 处理场景：viewDidLoad 时正在加载，现在加载已完成
+    if (self.musicPlayerModel.nowPlayingSong) {
+        BOOL shouldShowPlaying = self.musicPlayerModel.isPlaying || self.musicPlayerModel.isLoading;
+        if (self.isPlaying != shouldShowPlaying) {
+            NSLog(@"[MusicPlayerVC] viewWillAppear 更新播放按钮状态: %d", shouldShowPlaying);
+            [self updatePlayButtonState:shouldShowPlaying];
+        }
+        
+        // 如果正在加载但检查定时器未启动，启动它
+        if (self.musicPlayerModel.isLoading && !self.loadingCheckTimer) {
+            [self startLoadingCheckTimer];
+        }
+        
+        // 如果正在播放但进度定时器未启动，启动它
+        if (self.musicPlayerModel.isPlaying && !self.progressTimer) {
+            [self startProgressTimer];
+        }
+    }
     
     // 同步当前播放进度到 UI
     [self syncCurrentProgressToUI];
@@ -403,6 +437,49 @@
     NSInteger minutes = (NSInteger)timeInterval / 60;
     NSInteger seconds = (NSInteger)timeInterval % 60;
     return [NSString stringWithFormat:@"%02ld:%02ld", (long)minutes, (long)seconds];
+}
+
+#pragma mark - 资源加载检查（修复快速打开页面状态不同步问题）
+
+/// 启动资源加载检查定时器
+- (void)startLoadingCheckTimer {
+    [self stopLoadingCheckTimer];
+    
+    // 每 0.3 秒检查一次资源加载状态
+    self.loadingCheckTimer = [NSTimer scheduledTimerWithTimeInterval:0.3
+                                                              target:self
+                                                            selector:@selector(checkLoadingState)
+                                                            userInfo:nil
+                                                             repeats:YES];
+    NSLog(@"[MusicPlayerVC] 启动资源加载检查定时器");
+}
+
+/// 停止资源加载检查定时器
+- (void)stopLoadingCheckTimer {
+    if (self.loadingCheckTimer) {
+        [self.loadingCheckTimer invalidate];
+        self.loadingCheckTimer = nil;
+        NSLog(@"[MusicPlayerVC] 停止资源加载检查定时器");
+    }
+}
+
+/// 检查资源加载状态
+- (void)checkLoadingState {
+    // 如果资源加载完成
+    if (!self.musicPlayerModel.isLoading) {
+        NSLog(@"[MusicPlayerVC] 资源加载完成，更新播放状态");
+        
+        // 更新播放按钮状态
+        [self updatePlayButtonState:self.musicPlayerModel.isPlaying];
+        
+        // 如果已经开始播放，启动进度条定时器
+        if (self.musicPlayerModel.isPlaying) {
+            [self startProgressTimer];
+        }
+        
+        // 停止检查定时器
+        [self stopLoadingCheckTimer];
+    }
 }
 
 #pragma mark - 进度条自动更新

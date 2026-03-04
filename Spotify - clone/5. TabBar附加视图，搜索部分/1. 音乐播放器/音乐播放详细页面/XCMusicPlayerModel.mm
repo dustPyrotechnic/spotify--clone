@@ -323,6 +323,9 @@ static XCMusicPlayerModel *instance = nil;
             // 移除监听
             [playerItem removeObserver:self forKeyPath:@"status"];
             
+            // 资源加载完成，重置加载标记
+            _isLoading = NO;
+            
             // 开始播放
             [self.player play];
             _isPlaying = YES;
@@ -337,6 +340,9 @@ static XCMusicPlayerModel *instance = nil;
             NSLog(@"[PlayerModel] ❌ 播放失败: %@", playerItem.error.localizedDescription);
             NSLog(@"[PlayerModel] 错误代码: %ld", (long)playerItem.error.code);
             
+            // 资源加载失败，重置加载标记
+            _isLoading = NO;
+            
             // 移除监听
             [playerItem removeObserver:self forKeyPath:@"status"];
         }
@@ -348,6 +354,7 @@ static XCMusicPlayerModel *instance = nil;
     NSLog(@"[PlayerModel] 暂停播放");
     [self.player pause];
     _isPlaying = NO;
+    _isLoading = NO;
     // 停止定时器，并更新一次锁屏信息以反映暂停状态
     [self stopLockScreenProgressTimer];
     [self updateLockScreenInfo];
@@ -362,6 +369,7 @@ static XCMusicPlayerModel *instance = nil;
     NSLog(@"[PlayerModel] 继续播放");
     [self.player play];
     _isPlaying = YES;
+    _isLoading = NO;
     // 启动定时器定期更新锁屏进度
     [self startLockScreenProgressTimer];
     [self updateLockScreenInfo];
@@ -462,6 +470,9 @@ static XCMusicPlayerModel *instance = nil;
 - (void)playWithURL:(NSURL *)url songId:(NSString *)songId {
     NSLog(@"[PlayerModel] 创建播放器: %@", songId);
     NSLog(@"[PlayerModel] 原始 URL: %@", url);
+    
+    // 标记开始加载资源
+    _isLoading = YES;
     
     // 切歌前清理预加载观察者，避免观察者累积
     if (self.preloadProgressObserverToken) {

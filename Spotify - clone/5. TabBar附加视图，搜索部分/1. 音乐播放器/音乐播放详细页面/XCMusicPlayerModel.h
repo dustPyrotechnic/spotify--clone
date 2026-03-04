@@ -39,6 +39,9 @@ extern NSString * const XCMusicPlayerPlayModeDidChangeNotification;
 /// 播放模式
 @property (nonatomic, assign) XCPlayMode playMode;
 
+/// 是否正在加载资源（用于快速打开播放页面时正确显示状态）
+@property (nonatomic, assign, readonly) BOOL isLoading;
+
 // Phase 8: 预加载触发标记（内部使用）
 @property (nonatomic, assign) BOOL hasTriggeredPreload;
 
