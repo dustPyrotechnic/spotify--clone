@@ -8,6 +8,7 @@
 #import "SceneDelegate.h"
 
 #import "XCNetworkManager.h"
+#import "XCAuthService.h"
 
 
 
@@ -29,6 +30,11 @@
   // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
   // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
   self.window.frame = ((UIWindowScene *)scene).screen.bounds;
+
+  // 恢复登录会话（从 Keychain 读取 refreshToken，换取新 accessToken）
+  [[XCAuthService sharedInstance] restoreSessionWithCompletion:^(BOOL restored) {
+      NSLog(@"[Auth] 会话恢复%@", restored ? @"成功" : @"失败/无保存的会话");
+  }];
 
   MainTabBarController* mainTabBarController = [[MainTabBarController alloc] init];
   self.window.rootViewController = mainTabBarController;

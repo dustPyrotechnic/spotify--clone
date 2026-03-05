@@ -42,8 +42,11 @@ NS_ASSUME_NONNULL_BEGIN
 /// 显示已登录状态，传入登录响应 data 字典
 - (void)showLoggedInWithUserInfo:(NSDictionary *)userInfo;
 
-/// 显示错误信息（主线程调用）
+/// 显示错误信息（红色，主线程调用）
 - (void)showError:(NSString *)message;
+
+/// 显示成功信息（绿色，主线程调用）
+- (void)showSuccess:(NSString *)message;
 
 /// 清除错误信息
 - (void)clearError;

@@ -308,6 +308,15 @@ static UIColor *FieldBgColor(void)    { return [UIColor colorWithRed:0.18  green
 - (void)showError:(NSString *)message {
     dispatch_async(dispatch_get_main_queue(), ^{
         self.errorLabel.text = message;
+        self.errorLabel.textColor = [UIColor systemRedColor];
+        self.errorLabel.hidden = (message.length == 0);
+    });
+}
+
+- (void)showSuccess:(NSString *)message {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.errorLabel.text = message;
+        self.errorLabel.textColor = [UIColor systemGreenColor];
         self.errorLabel.hidden = (message.length == 0);
     });
 }

@@ -8,6 +8,7 @@
 #import "MainTabBarController.h"
 
 #import "XCNetworkManager.h"
+#import "XCAuthService.h"
 
 #import <CoreGraphics/CoreGraphics.h>
 #import <UIKit/UIKit.h>
@@ -46,7 +47,7 @@
         return [[UINavigationController alloc] initWithRootViewController:homePageController];
     }];
 
-    UITab *musicTab = [[UITab alloc] initWithTitle:@"Music Warehouse"
+    UITab *musicTab = [[UITab alloc] initWithTitle:@"Library"
                                              image:[UIImage systemImageNamed:@"music.pages"]
                                         identifier:@"MusicWarehouse"
                             viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
@@ -54,7 +55,7 @@
         return [[UINavigationController alloc] initWithRootViewController:musicWarehousePageController];
     }];
 
-    UITab *foundingTab = [[UITab alloc] initWithTitle:@"New Founding"
+    UITab *foundingTab = [[UITab alloc] initWithTitle:@"Discover"
                                                 image:[UIImage systemImageNamed:@"star.bubble"]
                                            identifier:@"NewFounding"
                                viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
@@ -62,7 +63,7 @@
         return [[UINavigationController alloc] initWithRootViewController:newFoundingViewController];
     }];
 
-    UITab *broadcastTab = [[UITab alloc] initWithTitle:@"Broad Cast"
+    UITab *broadcastTab = [[UITab alloc] initWithTitle:@"Podcast"
                                                  image:[UIImage systemImageNamed:@"wave.3.up"]
                                             identifier:@"BroadCast"
                                 viewControllerProvider:^UIViewController * _Nonnull(UITab * _Nonnull tab) {
@@ -91,7 +92,8 @@
     self.tabBarMinimizeBehavior = UITabBarMinimizeBehaviorOnScrollDown;
     
     // 初始化底部播放条
-    self.musicPlayerAccessoryView = [[XCMusicPlayerAccessoryView alloc] initWithFrame:CGRectMake(20, 20, self.view.bounds.size.width - 40, 40) withImage:[UIImage imageNamed:@"1.jpeg"] andTitle:@"测试歌曲" withSonger:@"测试歌手" withCondition:NO];
+    self.musicPlayerAccessoryView = [[XCMusicPlayerAccessoryView alloc] initWithFrame:CGRectMake(20, 20, self.view.bounds.size.width - 40, 40) withImage:[UIImage systemImageNamed:@"music.note"] andTitle:@"暂未播放" withSonger:@"" withCondition:NO];
+    self.musicPlayerAccessoryView.imageView.tintColor = [UIColor systemGrayColor];
 
     __weak typeof(self) weakSelf = self;
     self.musicPlayerAccessoryView.presentPlayerViewControllerBlock = ^(XCMusicPlayerViewController * _Nonnull playerVC) {
@@ -143,14 +145,27 @@
                                              selector:@selector(handleNowPlayingSongDidChange:)
                                                  name:XCMusicPlayerNowPlayingSongDidChangeNotification
                                                object:nil];
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(handlePlaybackStateDidChange:)
                                                  name:XCMusicPlayerPlaybackStateDidChangeNotification
                                                object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleLoginStatusDidChange:)
+                                                 name:XCAuthLoginStatusDidChangeNotification
+                                               object:nil];
 }
 
 #pragma mark - 通知处理
+
+- (void)handleLoginStatusDidChange:(NSNotification *)notification {
+    if ([XCAuthService sharedInstance].isLoggedIn) {
+        NSLog(@"[MainTabBar] 用户已登录");
+    } else {
+        NSLog(@"[MainTabBar] 用户已登出");
+    }
+}
 
 - (void)handleNowPlayingSongDidChange:(NSNotification *)notification {
     XC_YYSongData *song = notification.userInfo[@"song"];

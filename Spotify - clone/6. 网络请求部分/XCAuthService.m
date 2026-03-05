@@ -5,15 +5,19 @@
 
 #import "XCAuthService.h"
 #import <AFNetworking/AFNetworking.h>
+#import <UICKeyChainStore/UICKeyChainStore.h>
 
 #pragma mark - 常量
 
 NSString * const XCAuthLoginStatusDidChangeNotification = @"XCAuthLoginStatusDidChangeNotification";
-
+// 根域名
 static NSString * const kAuthBaseURL        = @"http://xiaochenstudio.com/api";
 static NSString * const kRefreshTokenKey    = @"XCAuth_refreshToken";
 static NSString * const kUsernameKey        = @"XCAuth_username";
 static NSString * const kUserIdKey          = @"XCAuth_userId";
+
+// Keychain 服务标识
+static NSString * const kKeychainService    = @"com.xiaochen.spotify-clone.auth";
 
 @interface XCAuthService ()
 @property (nonatomic, strong) AFHTTPSessionManager *sessionManager;
@@ -50,39 +54,49 @@ static NSString * const kUserIdKey          = @"XCAuth_userId";
 #pragma mark - 状态属性
 
 - (BOOL)isLoggedIn {
-    return (self.accessToken.length > 0);
+    if (self.accessToken.length == 0) return NO;
+    if (self.accessTokenExpiresAt) {
+        // 预留 60 秒缓冲，避免临界点请求失败
+        NSDate *threshold = [NSDate dateWithTimeIntervalSinceNow:60];
+        if ([self.accessTokenExpiresAt compare:threshold] == NSOrderedAscending) {
+            return NO;
+        }
+    }
+    return (self.refreshToken.length > 0);
 }
 
 - (NSString *)refreshToken {
-    return [[NSUserDefaults standardUserDefaults] stringForKey:kRefreshTokenKey];
+    return [UICKeyChainStore stringForKey:kRefreshTokenKey service:kKeychainService];
 }
 
 - (NSString *)username {
-    return [[NSUserDefaults standardUserDefaults] stringForKey:kUsernameKey];
+    return [UICKeyChainStore stringForKey:kUsernameKey service:kKeychainService];
 }
 
 - (NSString *)userId {
-    return [[NSUserDefaults standardUserDefaults] stringForKey:kUserIdKey];
+    return [UICKeyChainStore stringForKey:kUserIdKey service:kKeychainService];
 }
 
 #pragma mark - 内部：存储 / 清除 Token
 
 - (void)saveRefreshToken:(NSString *)refreshToken username:(NSString *)username userId:(NSString *)userId {
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
-    if (refreshToken) [ud setObject:refreshToken forKey:kRefreshTokenKey];
-    if (username)     [ud setObject:username     forKey:kUsernameKey];
-    if (userId)       [ud setObject:userId       forKey:kUserIdKey];
-    [ud synchronize];
+    if (refreshToken) {
+        [UICKeyChainStore setString:refreshToken forKey:kRefreshTokenKey service:kKeychainService];
+    }
+    if (username) {
+        [UICKeyChainStore setString:username forKey:kUsernameKey service:kKeychainService];
+    }
+    if (userId) {
+        [UICKeyChainStore setString:userId forKey:kUserIdKey service:kKeychainService];
+    }
 }
 
 - (void)clearAllTokens {
     self.accessToken = nil;
     self.accessTokenExpiresAt = nil;
-    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
-    [ud removeObjectForKey:kRefreshTokenKey];
-    [ud removeObjectForKey:kUsernameKey];
-    [ud removeObjectForKey:kUserIdKey];
-    [ud synchronize];
+    [UICKeyChainStore removeItemForKey:kRefreshTokenKey service:kKeychainService];
+    [UICKeyChainStore removeItemForKey:kUsernameKey service:kKeychainService];
+    [UICKeyChainStore removeItemForKey:kUserIdKey service:kKeychainService];
 }
 
 #pragma mark - 内部：配置 Authorization Header
@@ -291,6 +305,10 @@ static NSString * const kUserIdKey          = @"XCAuth_userId";
                 self.accessToken = newAccess;
                 [self updateExpiresAt:data[@"expiresIn"]];
                 [self saveRefreshToken:newRefresh username:uname userId:uid];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [[NSNotificationCenter defaultCenter]
+                        postNotificationName:XCAuthLoginStatusDidChangeNotification object:nil];
+                });
                 if (completion) completion(YES);
             } else {
                 [self clearAllTokens];

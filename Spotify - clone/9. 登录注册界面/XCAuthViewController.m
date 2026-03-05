@@ -128,8 +128,7 @@
             if (success) {
                 // 注册成功后自动登录
                 [self.authView showLoginMode];
-                [self.authView showError:[NSString stringWithFormat:@"注册成功，请登录"]];
-                self.authView.errorLabel.textColor = [UIColor systemGreenColor];
+                [self.authView showSuccess:@"注册成功，请登录"];
             } else {
                 [self.authView showError:message ?: @"注册失败"];
             }

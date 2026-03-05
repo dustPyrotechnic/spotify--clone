@@ -163,6 +163,11 @@
 
 }
 
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self updateProfileButton];
+}
+
 #pragma mark - 个人资料按钮
 
 - (void)profileButtonTapped {
