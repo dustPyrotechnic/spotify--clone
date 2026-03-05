@@ -34,8 +34,6 @@
 @property (nonatomic, strong) NSTimer *progressTimer;
 /// 资源加载检查定时器（用于快速打开页面时检查加载状态）
 @property (nonatomic, strong) NSTimer *loadingCheckTimer;
-
-#pragma mark - Phase 3: 评论面板属性
 /// 评论面板
 @property (nonatomic, strong) XCSongCommentPanel *commentPanel;
 /// 蒙层视图
@@ -597,8 +595,6 @@
     });
 }
 
-#pragma mark - Phase 3: 评论面板
-
 - (void)pressCommentButton {
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
     [feedback impactOccurred];
@@ -623,7 +619,7 @@
     // 更新根视图背景色与评论面板一致，避免动画时颜色闪烁
     self.view.backgroundColor = [self themeBackgroundColor];
 
-    // 1. 创建评论面板
+    // 创建评论面板
     if (!self.commentPanel) {
         self.commentPanel = [[XCSongCommentPanel alloc] init];
         self.commentPanel.delegate = self;
@@ -636,7 +632,7 @@
         [self.commentPanel applyThemeColor:self.mainView.themeBaseColor];
     }
 
-    // 2. 创建迷你播放控制器（填充评论面板上方的可见区域）
+    // 创建迷你播放控制器（填充评论面板上方的可见区域）
     if (!self.miniPlayerView) {
         self.miniPlayerView = [[XCMiniPlayerView alloc] init];
         self.miniPlayerView.alpha = 0;
@@ -668,7 +664,7 @@
         [self.miniPlayerView applyThemeColor:self.mainView.themeBaseColor];
     }
 
-    // 3. 加载评论数据
+    // 加载评论数据
     XCSongCommentList *preloadedList = [self.musicPlayerModel getPreloadedCommentList];
     if (preloadedList) {
         NSLog(@"[MusicPlayerVC] 使用预加载的评论数据");
@@ -679,7 +675,7 @@
         [self loadComments];
     }
 
-    // 4. 动画：主视图淡出，迷你播放器淡入，面板滑入
+    // 动画：主视图淡出，迷你播放器淡入，面板滑入
     self.view.userInteractionEnabled = NO;
     [UIView animateWithDuration:0.35 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         self.mainView.alpha = 0;
@@ -781,8 +777,6 @@
 - (void)commentPanelDidTapClose:(XCSongCommentPanel *)panel {
     [self hideCommentPanel];
 }
-
-// 注意：热门/最新分栏控件已移除，API 不支持排序切换
 
 - (BOOL)isCommentPanelVisible {
     return self.commentPanelVisible;

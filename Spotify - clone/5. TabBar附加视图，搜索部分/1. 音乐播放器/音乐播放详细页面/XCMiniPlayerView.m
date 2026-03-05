@@ -17,7 +17,6 @@
 }
 
 - (void)setupUI {
-  // ========== 左侧：专辑封面 ==========
   self.albumImageView = [[UIImageView alloc] init];
   self.albumImageView.contentMode = UIViewContentModeScaleAspectFill;
   self.albumImageView.clipsToBounds = YES;
