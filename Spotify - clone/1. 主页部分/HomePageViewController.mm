@@ -17,6 +17,8 @@
 #import "XCALbumDetailViewController.h"
 
 #import "XCMusicPlayerAccessoryView.h"
+#import "XCAuthViewController.h"
+#import "XCAuthService.h"
 @interface HomePageViewController ()
 @end
 
@@ -72,8 +74,9 @@
   // 设置导航栏上的按钮，左按钮
   UIButton* myImagePhotoBtn = [[UIButton alloc] init];
 
-  [myImagePhotoBtn setImage:[UIImage systemImageNamed:@"person"] forState:UIControlStateNormal];
+  [myImagePhotoBtn setImage:[UIImage systemImageNamed:@"person.crop.circle.badge.questionmark.fill"] forState:UIControlStateNormal];
   myImagePhotoBtn.tintColor = [UIColor systemGreenColor];
+  [myImagePhotoBtn addTarget:self action:@selector(profileButtonTapped) forControlEvents:UIControlEventTouchUpInside];
 
   [myImagePhotoBtn setPreferredSymbolConfiguration:symbolConfig forImageInState:UIControlStateNormal];
   UIBarButtonItem* myImagePhotoButtonItem = [[UIBarButtonItem alloc]initWithCustomView:myImagePhotoBtn];
@@ -127,6 +130,12 @@
   
   [self.view addSubview:self.mainView];
   
+  // 监听登录状态变更，更新左侧头像按钮
+  [[NSNotificationCenter defaultCenter] addObserver:self
+                                           selector:@selector(updateProfileButton)
+                                               name:XCAuthLoginStatusDidChangeNotification
+                                             object:nil];
+
   [self.model getDataOfAllAlbumsWithCompletion:^(BOOL success) {
     if (success) {
       NSLog(@"初始数据加载成功");
@@ -152,6 +161,30 @@
    }];
 */
 
+}
+
+#pragma mark - 个人资料按钮
+
+- (void)profileButtonTapped {
+  XCAuthViewController *authVC = [[XCAuthViewController alloc] init];
+  UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:authVC];
+  nav.modalPresentationStyle = UIModalPresentationPageSheet;
+  [self presentViewController:nav animated:YES completion:nil];
+}
+
+- (void)updateProfileButton {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    BOOL loggedIn = [XCAuthService sharedInstance].isLoggedIn;
+    // 取出第一个 leftBarButtonItem（个人资料按钮）
+    UIBarButtonItem *firstItem = self.navigationItem.leftBarButtonItems.firstObject;
+    UIButton *btn = (UIButton *)firstItem.customView;
+    if ([btn isKindOfClass:[UIButton class]]) {
+      NSString *iconName = loggedIn ? @"person.circle.fill" : @"person.crop.circle.badge.questionmark.fill";
+      UIColor *iconColor = [UIColor systemGreenColor];
+      [btn setImage:[UIImage systemImageNamed:iconName] forState:UIControlStateNormal];
+      btn.tintColor = iconColor;
+    }
+  });
 }
 
 #pragma mark -UITableView相关内容
