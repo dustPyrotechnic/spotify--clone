@@ -787,23 +787,19 @@
 }
 
 - (void)commentPanel:(XCSongCommentPanel *)panel didTapViewReplies:(XCSongComment *)comment {
-    NSLog(@"[MusicPlayerVC] 查看评论回复: %@", comment.commentId);
+  NSLog(@"[MusicPlayerVC] 查看评论回复: %@", comment.commentId);
 
-    NSString *songId = self.musicPlayerModel.nowPlayingSong.songId;
-    if (!songId || !comment.commentId) return;
+  NSString *songId = self.musicPlayerModel.nowPlayingSong.songId;
+  if (!songId || !comment.commentId) return;
 
-    XCSongCommentFloorViewController *floorVC = [[XCSongCommentFloorViewController alloc] initWithComment:comment songId:songId];
-    floorVC.modalPresentationStyle = UIModalPresentationPageSheet;
-
-    if (@available(iOS 15.0, *)) {
-        UISheetPresentationController *sheet = floorVC.sheetPresentationController;
-        sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent,
-                          UISheetPresentationControllerDetent.largeDetent];
-        sheet.prefersGrabberVisible = YES;
-        sheet.preferredCornerRadius = 16;
-    }
-
-    [self presentViewController:floorVC animated:YES completion:nil];
+  XCSongCommentFloorViewController *floorVC = [[XCSongCommentFloorViewController alloc] initWithComment:comment songId:songId];
+  floorVC.modalPresentationStyle = UIModalPresentationPageSheet;
+  UISheetPresentationController *sheet = floorVC.sheetPresentationController;
+  sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent,
+                    UISheetPresentationControllerDetent.largeDetent];
+  sheet.prefersGrabberVisible = YES;
+  sheet.preferredCornerRadius = 16;
+  [self presentViewController:floorVC animated:YES completion:nil];
 }
 
 - (void)commentPanel:(XCSongCommentPanel *)panel didToggleExpandForComment:(XCSongComment *)comment atIndexPath:(NSIndexPath *)indexPath {

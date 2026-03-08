@@ -135,8 +135,6 @@
     make.centerY.equalTo(self);
     make.width.height.mas_equalTo(albumSize);
   }];
-
-  // ========== 底部进度条 ==========
   // 进度条固定在底部，宽度充足
   [self.progressView mas_makeConstraints:^(MASConstraintMaker *make) {
     make.left.equalTo(self).offset(rightContentX);
@@ -145,7 +143,6 @@
     make.height.mas_equalTo(5); // 加粗进度条
   }];
 
-  // ========== 播放控制按钮行 ==========
   // 核心播放控制居中：上一首 - 播放/暂停 - 下一首
   CGFloat btnSpacing = 24;  // 播放按钮之间的间距
   

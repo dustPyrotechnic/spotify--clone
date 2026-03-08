@@ -26,6 +26,8 @@ extern NSString * const XCMusicPlayerNowPlayingSongDidChangeNotification;
 extern NSString * const XCMusicPlayerPlaybackStateDidChangeNotification;
 /// 播放模式变更通知
 extern NSString * const XCMusicPlayerPlayModeDidChangeNotification;
+/// 歌曲 URL 获取失败通知（版权/网络原因），userInfo[@"songName"] 为歌曲名
+extern NSString * const XCMusicPlayerURLFetchFailedNotification;
 
 @interface XCMusicPlayerModel : NSObject
 /// 全局的音乐播放器

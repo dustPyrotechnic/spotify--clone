@@ -56,6 +56,11 @@
     make.edges.equalTo(self.view);
   }];
 
+  // 监听 URL 获取失败通知，弹框告知用户
+  [[NSNotificationCenter defaultCenter] addObserver:self
+                                           selector:@selector(handleURLFetchFailed:)
+                                               name:XCMusicPlayerURLFetchFailedNotification
+                                             object:nil];
 }
 
 
@@ -227,12 +232,14 @@
     return;
   }
   [tableView deselectRowAtIndexPath:indexPath animated:YES];
-  NSLog(@"点击歌曲为%@，id信息为%@",self.model.playerList[indexPath.row - 1].name, self.model.playerList[indexPath.row - 1 ].songId);
-  [XCMusicPlayerModel sharedInstance].nowPlayingSong = self.model.playerList[indexPath.row - 1];
+  XC_YYSongData *song = self.model.playerList[indexPath.row - 1];
+  NSLog(@"点击歌曲为%@，id信息为%@", song.name, song.songId);
 
-  [[XCMusicPlayerModel sharedInstance]playMusicWithId:self.model.playerList[indexPath.row - 1].songId];
-  // 传入播放列表
+  // 先设置播放列表，再设置当前歌曲，最后触发播放
+  // 确保 playMusicWithId 内部调用 playNextSong 时能取到正确的列表
   [XCMusicPlayerModel sharedInstance].playerlist = self.model.playerList;
+  [XCMusicPlayerModel sharedInstance].nowPlayingSong = song;
+  [[XCMusicPlayerModel sharedInstance] playMusicWithId:song.songId];
 
 }
 
@@ -286,6 +293,24 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath {
   cell.mainImageView.image = [UIImage imageNamed:@"test.jpg"];
   cell.songLabel.text = @"Deadman's Gun";
   cell.authorLabel.text = @"Ashtar Command";
+}
+
+#pragma mark - URL 获取失败处理
+
+- (void)handleURLFetchFailed:(NSNotification *)notification {
+  NSString *songName = notification.userInfo[@"songName"] ?: @"该歌曲";
+  NSString *msg = [NSString stringWithFormat:@"《%@》暂时无法播放，已自动跳至下一首", songName];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"无法播放"
+                                                                   message:msg
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+  });
+}
+
+- (void)dealloc {
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 #pragma mark - 测试方法

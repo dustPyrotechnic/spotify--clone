@@ -49,7 +49,6 @@ NS_ASSUME_NONNULL_BEGIN
 /// 播放按钮背景视图（用于美化）
 @property (nonatomic, strong) UIView* playButtonBackground;
 
-// Phase 2: 评论入口按钮
 @property (nonatomic, strong) UIButton* commentButton;
 
 // 辅助动画效果

@@ -287,14 +287,19 @@
   NSString* albumId = cell.data.albumId;
   NSString* imageURL = cell.data.coverImgUrl;
   XCALbumDetailViewController* detailViewController = [[XCALbumDetailViewController alloc] init];
-  // 获取数据
+  // 先弹出页面
   detailViewController.model.mainImaUrl = imageURL;
   detailViewController.model.playerlistName = cell.titleLable.text;
-  [[XCNetworkManager sharedInstance] getDetailOfAlbumFromWY:detailViewController.model.playerList ofAlbumId:albumId withCompletion:^(BOOL success) {
-    // 弹出这个页面
-    [self.navigationController pushViewController:detailViewController animated:YES];
-  }];
+  [self.navigationController pushViewController:detailViewController animated:YES];
   NSLog(@"[主页控制器]：弹出详细视图");
+  // 再发起网络请求，数据回来后刷新
+  [[XCNetworkManager sharedInstance] getDetailOfAlbumFromWY:detailViewController.model.playerList ofAlbumId:albumId withCompletion:^(BOOL success) {
+    if (success) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [detailViewController.mainView.tableView reloadData];
+      });
+    }
+  }];
 
 }
 

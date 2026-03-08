@@ -30,6 +30,7 @@
 NSString * const XCMusicPlayerNowPlayingSongDidChangeNotification = @"XCMusicPlayerNowPlayingSongDidChangeNotification";
 NSString * const XCMusicPlayerPlaybackStateDidChangeNotification = @"XCMusicPlayerPlaybackStateDidChangeNotification";
 NSString * const XCMusicPlayerPlayModeDidChangeNotification = @"XCMusicPlayerPlayModeDidChangeNotification";
+NSString * const XCMusicPlayerURLFetchFailedNotification = @"XCMusicPlayerURLFetchFailedNotification";
 
 @interface XCMusicPlayerModel ()
 /// 锁屏进度更新定时器
@@ -40,6 +41,8 @@ NSString * const XCMusicPlayerPlayModeDidChangeNotification = @"XCMusicPlayerPla
 // Phase 1: 评论预加载任务
 @property (nonatomic, strong, nullable) NSURLSessionDataTask *commentPreloadTask;
 @property (nonatomic, copy, nullable) NSString *preloadingSongId;
+/// 连续 URL 获取失败次数，用于防止全 VIP 歌单时无限跳歌
+@property (nonatomic, assign) NSInteger consecutiveSkipCount;
 @end
 
 @implementation XCMusicPlayerModel
@@ -387,7 +390,7 @@ static XCMusicPlayerModel *instance = nil;
         NSLog(@"[PlayerModel] playMusicWithId: songId 为空");
         return;
     }
-    
+
     NSLog(@"[PlayerModel] 请求播放歌曲: %@", songId);
     
     // Phase 1: 取消上一首的评论预加载请求
@@ -414,7 +417,8 @@ static XCMusicPlayerModel *instance = nil;
         XCAudioFileCacheState cacheState = [cacheManager cacheStateForSongId:songId];
         NSString *cacheLevel = (cacheState == XCAudioFileCacheStateComplete) ? @"L3" : @"L2";
         NSLog(@"[PlayerModel] 命中 %@ 缓存，使用本地播放: %@", cacheLevel, cachedURL.path.lastPathComponent);
-        
+
+        self.consecutiveSkipCount = 0;
         [self playWithURL:cachedURL songId:songId];
         [cacheManager setCurrentPrioritySong:songId];
         
@@ -434,31 +438,54 @@ static XCMusicPlayerModel *instance = nil;
             
             if (songUrl) {
                 NSLog(@"[PlayerModel] 获取到歌曲 URL: %@", songUrl);
-                
+
+                // 成功获取 URL，重置连续跳歌计数
+                strongSelf.consecutiveSkipCount = 0;
+
                 // Phase 8: 记录原始 URL，用于确定正确的文件扩展名
                 [cacheManager recordOriginalURL:songUrl forSongId:songId];
-                
+
                 [strongSelf playWithURL:songUrl songId:songId];
-                
+
                 // Phase 8: 设置当前优先歌曲（防止 L1 被清理）
                 [cacheManager setCurrentPrioritySong:songId];
-                
+
                 // Phase 1: 延迟预加载评论（网络播放时）
                 [strongSelf preloadCommentsForSong:songId];
-
-                // 旧缓存系统调用（已注释，保留代码供参考）
-                /*
-                XC_YYSongData *song = [strongSelf findSongInPlaylistById:songId];
-                if (song) {
-                    song.songUrl = songUrl.absoluteString;
-                    NSLog(@"[PlayerModel] 触发后台缓存下载, URL: %@", song.songUrl);
-                    [[XCMusicMemoryCache sharedInstance] downloadAndCache:song];
-                } else {
-                    NSLog(@"[PlayerModel] 播放列表中未找到该歌曲，无法缓存: %@", songId);
-                }
-                */
             } else {
                 NSLog(@"[PlayerModel] 无法获取歌曲 URL: %@", songId);
+
+                // 重置加载状态，防止界面永久 loading
+                strongSelf->_isLoading = NO;
+
+                strongSelf.consecutiveSkipCount++;
+
+                // 首次失败：通知外部弹框提示用户（后续自动跳歌则静默）
+                if (strongSelf.consecutiveSkipCount == 1) {
+                    NSString *name = strongSelf.nowPlayingSong.name ?: @"该歌曲";
+                    [[NSNotificationCenter defaultCenter]
+                        postNotificationName:XCMusicPlayerURLFetchFailedNotification
+                                      object:nil
+                                    userInfo:@{@"songName": name}];
+                }
+
+                // 自动跳到下一首，跳满一整圈后停止
+                if (strongSelf.playerlist.count > 1 &&
+                    strongSelf.consecutiveSkipCount < (NSInteger)strongSelf.playerlist.count) {
+                    NSLog(@"[PlayerModel] URL 不可用，自动跳到下一首 (连续跳过: %ld)",
+                          (long)strongSelf.consecutiveSkipCount);
+                    [strongSelf playNextSong];
+                } else {
+                    strongSelf.consecutiveSkipCount = 0;
+                    NSLog(@"[PlayerModel] 播放列表内所有歌曲 URL 均不可用，停止播放");
+
+                    // 更新播放状态为暂停，让界面按钮恢复为播放图标
+                    strongSelf->_isPlaying = NO;
+                    [[NSNotificationCenter defaultCenter]
+                        postNotificationName:XCMusicPlayerPlaybackStateDidChangeNotification
+                                      object:strongSelf
+                                    userInfo:@{@"isPlaying": @NO}];
+                }
             }
         });
     }];
@@ -762,8 +789,7 @@ static XCMusicPlayerModel *instance = nil;
 
     NSLog(@"[PlayerModel] 下一首索引: %lu, 歌曲: %@",
           (unsigned long)nextIndex, nextSong.name);
-    
-    // Phase 8: 使用新的预加载管理器预加载下下首
+
     NSInteger preloadIndex = (nextIndex + 1) % self.playerlist.count;
     if (preloadIndex != nextIndex) {  // 避免只有一首歌时重复加载
         XC_YYSongData *preloadSong = self.playerlist[preloadIndex];
