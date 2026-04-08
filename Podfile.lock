@@ -25,7 +25,7 @@ PODS:
     - SDWebImage/Core (= 5.21.6)
   - SDWebImage/Core (5.21.6)
   - UICKeyChainStore (2.2.1)
-  - WCDB.objc (2.1.15):
+  - WCDB.objc (2.1.16):
     - WCDBOptimizedSQLCipher (= 1.4.8)
   - WCDBOptimizedSQLCipher (1.4.8)
   - YYModel (1.0.4)
@@ -37,7 +37,7 @@ DEPENDENCIES:
   - Masonry
   - SDWebImage
   - UICKeyChainStore
-  - WCDB.objc (from `https://github.com/Tencent/wcdb.git`, tag `v2.1.15`)
+  - WCDB.objc (from `https://github.com/Tencent/wcdb.git`, tag `v2.1.16`)
   - YYModel
 
 SPEC REPOS:
@@ -54,12 +54,12 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   WCDB.objc:
     :git: https://github.com/Tencent/wcdb.git
-    :tag: v2.1.15
+    :tag: v2.1.16
 
 CHECKOUT OPTIONS:
   WCDB.objc:
     :git: https://github.com/Tencent/wcdb.git
-    :tag: v2.1.15
+    :tag: v2.1.16
 
 SPEC CHECKSUMS:
   AFNetworking: 3bd23d814e976cd148d7d44c3ab78017b744cd58
@@ -68,10 +68,10 @@ SPEC CHECKSUMS:
   Masonry: 678fab65091a9290e40e2832a55e7ab731aad201
   SDWebImage: 1bb6a1b84b6fe87b972a102bdc77dd589df33477
   UICKeyChainStore: ba3bff2c762b12db1e516f395c837dd25298b05e
-  WCDB.objc: 35650ab6d455a4a865d94d95436b1ddc865479af
+  WCDB.objc: d88dd9184fc7797b10890efadd593b8ce1d062dc
   WCDBOptimizedSQLCipher: 871994f7f620302fdf87a2729c099a1efa2223da
   YYModel: 2a7fdd96aaa4b86a824e26d0c517de8928c04b30
 
-PODFILE CHECKSUM: abb352c90e2be6b8f96cd509afab6d0f1badb472
+PODFILE CHECKSUM: 1abfc06743aba359a1d4634e99604de2d562c8c2
 
 COCOAPODS: 1.16.2

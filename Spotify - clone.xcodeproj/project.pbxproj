@@ -14,7 +14,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		4F5166FB781B7783839F632E /* Pods_Spotify___clone.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = "Pods_Spotify___clone.framework"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F5166FB781B7783839F632E /* Pods_Spotify___clone.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Spotify___clone.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A48C4601EBEA06EE1538720 /* Pods-Spotify - clone.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Spotify - clone.release.xcconfig"; path = "Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone.release.xcconfig"; sourceTree = "<group>"; };
 		8450C5558A63DF8A726B03DB /* Pods-Spotify - clone.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Spotify - clone.debug.xcconfig"; path = "Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone.debug.xcconfig"; sourceTree = "<group>"; };
 		AABB0002CCDD0002EEFF0002 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
@@ -197,13 +197,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -227,7 +223,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8450C5558A63DF8A726B03DB /* Pods-Spotify - clone.debug.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = XCSptify;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -264,7 +260,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7A48C4601EBEA06EE1538720 /* Pods-Spotify - clone.release.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = XCSptify;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "Apple Development";

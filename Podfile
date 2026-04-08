@@ -11,7 +11,7 @@ target 'Spotify - clone' do
   pod 'YYModel'
   
   # 数据库
-  pod 'WCDB.objc', :git => 'https://github.com/Tencent/wcdb.git', :tag => 'v2.1.15'
+  pod 'WCDB.objc', :git => 'https://github.com/Tencent/wcdb.git', :tag => 'v2.1.16'
   
   pod 'UICKeyChainStore'
   pod 'ChameleonFramework'
@@ -33,7 +33,20 @@ post_install do |installer|
 
         config.build_settings['LIBRARY_SEARCH_PATHS'] ||= ['$(inherited)']
         config.build_settings['LIBRARY_SEARCH_PATHS'] << '$(SDKROOT)/usr/lib'
+
       end
     end
+  end
+
+  # ⚠️ AFNetworking 修复：iOS 26 SDK 将 netinet6/in6.h 私有化
+  # netinet/in.h 在现代 iOS 上已包含 IPv6 支持，此行 import 多余
+  # ⚠️ AFNetworking 修复：iOS 26 SDK 将 netinet6/in6.h 私有化
+  # netinet/in.h 在现代 iOS 上已包含 IPv6 支持，此行 import 多余
+  Dir.glob("Pods/AFNetworking/**/*.{m,h,mm}").each do |f|
+    next unless File.exist?(f)
+    content = File.read(f)
+    next unless content.include?("#import <netinet6/in6.h>")
+    File.chmod(0644, f)
+    File.write(f, content.gsub("#import <netinet6/in6.h>\n", ""))
   end
 end
