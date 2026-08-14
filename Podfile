@@ -11,7 +11,7 @@ target 'Spotify - clone' do
   pod 'YYModel'
   
   # 数据库
-  pod 'WCDB.objc', :git => 'https://github.com/Tencent/wcdb.git', :tag => 'v2.1.15'
+  pod 'WCDB.objc', :git => 'https://github.com/Tencent/wcdb.git', :tag => 'v2.1.16'
   
   pod 'UICKeyChainStore'
   pod 'ChameleonFramework'
