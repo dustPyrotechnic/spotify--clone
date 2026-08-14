@@ -239,6 +239,12 @@ static XCNetworkManager *instance = nil;
 }
 
 - (void)getDetailOfAlbumFromWY:(NSMutableArray *)array ofAlbumId:(NSString*) albumId withCompletion:(void(^)(BOOL success))completion {
+    // albumId 为空会让下面的字典字面量插入 nil 而崩溃，提前拦截
+    if (![albumId isKindOfClass:[NSString class]] || albumId.length == 0) {
+        NSLog(@"[网络请求]：getDetailOfAlbum 收到空 albumId，已跳过请求");
+        if (completion) completion(NO);
+        return;
+    }
     NSString *baseUrl = @"https://1390963969-2g6ivueiij.ap-guangzhou.tencentscf.com";
     NSString *requestUrl = [NSString stringWithFormat:@"%@/album", baseUrl];
     NSDictionary *params = @{@"id" : albumId};

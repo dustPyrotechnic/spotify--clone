@@ -36,6 +36,16 @@ namespace WCDB {
 
 typedef Syntax::ColumnType ColumnType;
 
+// Newer C++ standard libraries forbid specializing std::is_integral, so use this
+// internal trait to decide whether a type should be bound as an integer column.
+// It matches all builtin integral types plus WCDB::Tag.
+class Tag;
+template<typename T>
+struct WCDBIsIntegral : public std::integral_constant<bool, std::is_integral<T>::value> {};
+template<>
+struct WCDBIsIntegral<Tag> : public std::true_type {};
+
+
 #pragma mark - Column Type Info
 //Null
 template<ColumnType T = ColumnType::Null>
@@ -159,7 +169,7 @@ public:
 
 //Integer
 template<typename T>
-struct ColumnIsIntegerType<T, typename std::enable_if<(std::is_integral<T>::value || std::is_enum<T>::value)>::type>
+struct ColumnIsIntegerType<T, typename std::enable_if<(WCDBIsIntegral<T>::value || std::is_enum<T>::value)>::type>
 : public std::true_type {
 public:
     static ColumnTypeInfo<ColumnType::Integer>::UnderlyingType

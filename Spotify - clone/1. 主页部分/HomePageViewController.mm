@@ -286,6 +286,11 @@
   HomePageViewCollectionViewCell* cell = [collectionView cellForItemAtIndexPath:indexPath];
   NSString* albumId = cell.data.albumId;
   NSString* imageURL = cell.data.coverImgUrl;
+  // 数据不足时部分 cell 没有绑定 album，albumId 为空，直接返回避免无效导航与崩溃
+  if (![albumId isKindOfClass:[NSString class]] || albumId.length == 0) {
+    NSLog(@"[主页控制器]：该 cell 无有效专辑数据，忽略点击");
+    return;
+  }
   XCALbumDetailViewController* detailViewController = [[XCALbumDetailViewController alloc] init];
   // 先弹出页面
   detailViewController.model.mainImaUrl = imageURL;
