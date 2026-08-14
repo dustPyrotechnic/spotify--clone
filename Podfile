@@ -36,4 +36,13 @@ post_install do |installer|
       end
     end
   end
+
+  # iOS 26 SDK 将 netinet6/in6.h 私有化；netinet/in.h 已覆盖 IPv6 定义
+  Dir.glob("Pods/AFNetworking/**/*.{m,h,mm}").each do |f|
+    next unless File.exist?(f)
+    content = File.read(f)
+    next unless content.include?("#import <netinet6/in6.h>")
+    File.chmod(0644, f)
+    File.write(f, content.gsub("#import <netinet6/in6.h>\n", ""))
+  end
 end
