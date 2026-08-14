@@ -91,7 +91,7 @@
 /// 将指定歌曲的所有分段合并为完整 NSData（内存方式）
 /// @param songId 歌曲唯一标识
 /// @return 合并后的完整数据，如果没有分段返回 nil
-/// @discussion ⚠️ 注意：大文件会占用大量内存，建议小文件（<50MB）使用
+/// @discussion 大文件会占用大量内存，建议小文件（<50MB）使用
 /// @see writeMergedSegmentsToFile:forSongId: 大文件推荐使用流式合并
 - (NSData *)mergeAllSegmentsForSongId:(NSString *)songId;
 

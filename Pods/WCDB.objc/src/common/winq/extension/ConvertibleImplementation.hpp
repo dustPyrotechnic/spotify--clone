@@ -75,7 +75,7 @@ struct Is64BitUnsignedEnum<T, typename std::enable_if<std::is_enum<T>::value && 
 template<typename T>
 class LiteralValueConvertible<
 T, // 32-bit-integer/enum or 64-bit-signed-integer/enum
-typename std::enable_if<(std::is_integral<T>::value || std::is_enum<T>::value)
+typename std::enable_if<(WCDBIsIntegral<T>::value || std::is_enum<T>::value)
                         && !Is64BitUnsignedInteger<T>::value && !Is64BitUnsignedEnum<T>::value>::type>
 final : public std::true_type {
 public:

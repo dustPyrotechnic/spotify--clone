@@ -28,6 +28,11 @@ NS_ASSUME_NONNULL_BEGIN
 /// 从自定义 scheme URL 解析 songId
 - (NSString *)songIdFromStreamingURL:(NSURL *)streamingURL;
 
+/// 获取某首歌的已知文件总大小（来自 HTTP Content-Length/Content-Range 响应头）
+/// @param songId 歌曲唯一标识
+/// @return 文件总字节数，0 表示未知（可能尚未请求过或已重启应用）
+- (long long)totalLengthForSongId:(NSString *)songId;
+
 @end
 
 NS_ASSUME_NONNULL_END

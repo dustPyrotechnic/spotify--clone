@@ -14,6 +14,7 @@
       _offset = offset;
       _size = size;
       _isDownloaded = NO;
+    
   }
   return self;
 }

@@ -8,13 +8,18 @@
 
 /* Begin PBXBuildFile section */
 		33286A4CF31EA7A49F2BE5F0 /* Pods_Spotify___clone.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F5166FB781B7783839F632E /* Pods_Spotify___clone.framework */; };
-		CA00C4D22F2B01CE00AFD5B7 /* WCDBSwift in Frameworks */ = {isa = PBXBuildFile; productRef = CA00C4D12F2B01CE00AFD5B7 /* WCDBSwift */; };
+		AABB0001CCDD0001EEFF0001 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AABB0002CCDD0002EEFF0002 /* AVFoundation.framework */; };
+		AABB0003CCDD0003EEFF0003 /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AABB0004CCDD0004EEFF0004 /* MediaPlayer.framework */; };
+		AABB0005CCDD0005EEFF0005 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AABB0006CCDD0006EEFF0006 /* CoreMedia.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		4F5166FB781B7783839F632E /* Pods_Spotify___clone.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = "Pods_Spotify___clone.framework"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F5166FB781B7783839F632E /* Pods_Spotify___clone.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Spotify___clone.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A48C4601EBEA06EE1538720 /* Pods-Spotify - clone.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Spotify - clone.release.xcconfig"; path = "Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone.release.xcconfig"; sourceTree = "<group>"; };
 		8450C5558A63DF8A726B03DB /* Pods-Spotify - clone.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Spotify - clone.debug.xcconfig"; path = "Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone.debug.xcconfig"; sourceTree = "<group>"; };
+		AABB0002CCDD0002EEFF0002 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		AABB0004CCDD0004EEFF0004 /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
+		AABB0006CCDD0006EEFF0006 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		CA4DDAD92ECDFC3200AD601D /* Spotify - clone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Spotify - clone.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -44,8 +49,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CA00C4D22F2B01CE00AFD5B7 /* WCDBSwift in Frameworks */,
 				33286A4CF31EA7A49F2BE5F0 /* Pods_Spotify___clone.framework in Frameworks */,
+				AABB0001CCDD0001EEFF0001 /* AVFoundation.framework in Frameworks */,
+				AABB0003CCDD0003EEFF0003 /* MediaPlayer.framework in Frameworks */,
+				AABB0005CCDD0005EEFF0005 /* CoreMedia.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +72,9 @@
 			isa = PBXGroup;
 			children = (
 				4F5166FB781B7783839F632E /* Pods_Spotify___clone.framework */,
+				AABB0002CCDD0002EEFF0002 /* AVFoundation.framework */,
+				AABB0004CCDD0004EEFF0004 /* MediaPlayer.framework */,
+				AABB0006CCDD0006EEFF0006 /* CoreMedia.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -136,9 +146,6 @@
 			);
 			mainGroup = CA4DDAD02ECDFC3200AD601D;
 			minimizedProjectReferenceProxies = 1;
-			packageReferences = (
-				CA00C4D02F2A5ACB00AFD5B7 /* XCRemoteSwiftPackageReference "wcdb" */,
-			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CA4DDADA2ECDFC3200AD601D /* Products */;
 			projectDirPath = "";
@@ -190,13 +197,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Spotify - clone/Pods-Spotify - clone-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -220,26 +223,30 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8450C5558A63DF8A726B03DB /* Pods-Spotify - clone.debug.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = XCSptify;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = LF6C69B29M;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Spotify - clone/Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "xiaochenl894-gmail.com.Spotify---clone";
+				PRODUCT_BUNDLE_IDENTIFIER = "cxiaochenl894-gmail.com.spotifyclone";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "Spotify - clone/7. 个人播放列表部分（swift)/Spotify - clone-Bridging-Header.h";
@@ -253,26 +260,30 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7A48C4601EBEA06EE1538720 /* Pods-Spotify - clone.release.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = XCSptify;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = LF6C69B29M;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Spotify - clone/Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "xiaochenl894-gmail.com.Spotify---clone";
+				PRODUCT_BUNDLE_IDENTIFIER = "cxiaochenl894-gmail.com.spotifyclone";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "Spotify - clone/7. 个人播放列表部分（swift)/Spotify - clone-Bridging-Header.h";
@@ -421,26 +432,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		CA00C4D02F2A5ACB00AFD5B7 /* XCRemoteSwiftPackageReference "wcdb" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Tencent/wcdb";
-			requirement = {
-				kind = versionRange;
-				maximumVersion = 3.0.0;
-				minimumVersion = 2.1.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		CA00C4D12F2B01CE00AFD5B7 /* WCDBSwift */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = CA00C4D02F2A5ACB00AFD5B7 /* XCRemoteSwiftPackageReference "wcdb" */;
-			productName = WCDBSwift;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = CA4DDAD12ECDFC3200AD601D /* Project object */;
 }
